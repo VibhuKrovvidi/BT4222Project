@@ -70,9 +70,21 @@ def process(li):
 	return df
 
 if __name__ == '__main__':
-	
-	myurl = """https://www.google.com/maps/place/Murugan+Idli+Shop/@1.3087768,103.8563853,15z/data=!3m1!5s0x31da184956e15451:0x2b138430ae632476!4m7!3m6!1s0x0:0x3189a6dde2f4df90!8m2!3d1.3087768!4d103.8563853!9m1!1b1"""
-	mydf = scrape(myurl);
-	mydf = process(mydf)
-	# mydf.to_csv('googlereviews.csv')
+
+	restaurants = dict()
+	restaurants["TFDB"] = """https://www.google.com/maps/place/25+Degrees+Burger,+Wine+%26+Liquor+Bar/@1.3007261,103.8516291,17z/data=!4m7!3m6!1s0x31da19bb7807cba3:0x76563778a023572a!8m2!3d1.3007127!4d103.8516181!9m1!1b1"""
+	restaurants["TR"] = """https://www.google.com/maps/place/Tiga+Roti/@1.4433247,103.8158846,17z/data=!4m7!3m6!1s0x31da136c330fbc5b:0xf56c97db1899a57e!8m2!3d1.4433247!4d103.8158846!9m1!1b1"""
+	restaurants["TMG"] = """https://www.google.com/maps/place/The+Market+Grill/@1.2799855,103.8471047,17z/data=!4m7!3m6!1s0x31da190d7b80291f:0x826105028950285c!8m2!3d1.2799757!4d103.8471269!9m1!1b1"""
+
+	output_df = pd.DataFrame();
+
+	for i in restaurants.keys():
+		print(i)
+		retdf = scrape(restaurants[i])
+		retdf = process(retdf)
+		output_df = output_df.append(retdf)
+
+	output_df.to_csv("scraped_output.csv")
+
+	print(len(output_df))
 
