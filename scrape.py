@@ -82,6 +82,7 @@ if __name__ == '__main__':
 		print(i)
 		retdf = scrape(restaurants[i])
 		retdf = process(retdf)
+		retdf["Restaurant"] = str(i)
 		output_df = output_df.append(retdf)
 
 	output_df.to_csv("scraped_output.csv")
