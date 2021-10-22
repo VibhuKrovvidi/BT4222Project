@@ -74,5 +74,5 @@ if __name__ == '__main__':
 	myurl = """https://www.google.com/maps/place/Murugan+Idli+Shop/@1.3087768,103.8563853,15z/data=!3m1!5s0x31da184956e15451:0x2b138430ae632476!4m7!3m6!1s0x0:0x3189a6dde2f4df90!8m2!3d1.3087768!4d103.8563853!9m1!1b1"""
 	mydf = scrape(myurl);
 	mydf = process(mydf)
-	mydf.to_csv('googlereviews.csv')
+	# mydf.to_csv('googlereviews.csv')
 
