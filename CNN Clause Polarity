@@ -1,0 +1,3781 @@
+{
+  "nbformat": 4,
+  "nbformat_minor": 0,
+  "metadata": {
+    "colab": {
+      "name": "Copy of Copy of BT4222 Project.ipynb",
+      "provenance": [],
+      "collapsed_sections": []
+    },
+    "kernelspec": {
+      "name": "python3",
+      "display_name": "Python 3"
+    },
+    "language_info": {
+      "name": "python"
+    }
+  },
+  "cells": [
+    {
+      "cell_type": "code",
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "3_xJog8U4hmU",
+        "outputId": "5c9fd079-41f2-495b-8fc1-e14787feedeb"
+      },
+      "source": [
+        "import nltk\n",
+        "nltk.download('punkt')\n",
+        "nltk.download('averaged_perceptron_tagger')\n",
+        "import math\n",
+        "import numpy as np\n",
+        "import pandas as pd\n",
+        "import glob\n",
+        "import time\n",
+        "\n",
+        "from sklearn import linear_model, model_selection, metrics\n",
+        "from sklearn.model_selection import train_test_split\n",
+        "from sklearn.linear_model import LogisticRegression\n",
+        "from sklearn.svm import OneClassSVM\n",
+        "from sklearn import model_selection, metrics\n",
+        "from scipy import stats # for statistical tests\n",
+        "\n",
+        "import matplotlib.pyplot as plt\n",
+        "import seaborn as sns\n",
+        "\n",
+        "from google.colab import drive\n",
+        "\n",
+        "plt.style.use('seaborn')"
+      ],
+      "execution_count": 1,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "[nltk_data] Downloading package punkt to /root/nltk_data...\n",
+            "[nltk_data]   Unzipping tokenizers/punkt.zip.\n",
+            "[nltk_data] Downloading package averaged_perceptron_tagger to\n",
+            "[nltk_data]     /root/nltk_data...\n",
+            "[nltk_data]   Unzipping taggers/averaged_perceptron_tagger.zip.\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "tm4ML2Di42l9",
+        "outputId": "5c6ae2a6-cb43-4ba6-e9df-b97f3260e233"
+      },
+      "source": [
+        "# Get the dataset\n",
+        "drive.mount('/content/gdrive')"
+      ],
+      "execution_count": 2,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Mounted at /content/gdrive\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "Ybb5ACltVfd5"
+      },
+      "source": [
+        "Sentiment Analysis"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 206
+        },
+        "id": "U2XvNuf4VgjM",
+        "outputId": "4c94cc2f-a410-4890-afe6-6f083faba31e"
+      },
+      "source": [
+        "train = pd.read_pickle('gdrive/My Drive/sent_train.pkl')\n",
+        "train.head()"
+      ],
+      "execution_count": 6,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/html": [
+              "<div>\n",
+              "<style scoped>\n",
+              "    .dataframe tbody tr th:only-of-type {\n",
+              "        vertical-align: middle;\n",
+              "    }\n",
+              "\n",
+              "    .dataframe tbody tr th {\n",
+              "        vertical-align: top;\n",
+              "    }\n",
+              "\n",
+              "    .dataframe thead th {\n",
+              "        text-align: right;\n",
+              "    }\n",
+              "</style>\n",
+              "<table border=\"1\" class=\"dataframe\">\n",
+              "  <thead>\n",
+              "    <tr style=\"text-align: right;\">\n",
+              "      <th></th>\n",
+              "      <th>index</th>\n",
+              "      <th>feature</th>\n",
+              "      <th>raw_clause</th>\n",
+              "      <th>clause_vector</th>\n",
+              "      <th>clause_polarity</th>\n",
+              "    </tr>\n",
+              "  </thead>\n",
+              "  <tbody>\n",
+              "    <tr>\n",
+              "      <th>0</th>\n",
+              "      <td>154</td>\n",
+              "      <td>review</td>\n",
+              "      <td>Thank you for leaving a review</td>\n",
+              "      <td>[[-0.49886, 0.76602, 0.89751, -0.78547, -0.685...</td>\n",
+              "      <td>0.00</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>0</th>\n",
+              "      <td>154</td>\n",
+              "      <td>dinner</td>\n",
+              "      <td>\\r\\n\\r\\n Restaurant Ibid is now re - opened fo...</td>\n",
+              "      <td>[[-0.54264, 0.41476, 1.0322, -0.40244, 0.46691...</td>\n",
+              "      <td>0.00</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>0</th>\n",
+              "      <td>154</td>\n",
+              "      <td>Mondays</td>\n",
+              "      <td>\\r\\n\\r\\n Restaurant Ibid is now re - opened fo...</td>\n",
+              "      <td>[[-0.54264, 0.41476, 1.0322, -0.40244, 0.46691...</td>\n",
+              "      <td>0.00</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>0</th>\n",
+              "      <td>154</td>\n",
+              "      <td>forwards</td>\n",
+              "      <td>\\r\\n\\r\\n Looking forwards to hosting you</td>\n",
+              "      <td>[[0.29756, 0.70983, 0.65643, -1.3487, -0.41072...</td>\n",
+              "      <td>0.00</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>0</th>\n",
+              "      <td>154</td>\n",
+              "      <td>reservations</td>\n",
+              "      <td>reservations are highly recommended</td>\n",
+              "      <td>[[-0.13411, -0.39639, 0.64715, 0.38583, -0.225...</td>\n",
+              "      <td>0.16</td>\n",
+              "    </tr>\n",
+              "  </tbody>\n",
+              "</table>\n",
+              "</div>"
+            ],
+            "text/plain": [
+              "   index  ... clause_polarity\n",
+              "0    154  ...            0.00\n",
+              "0    154  ...            0.00\n",
+              "0    154  ...            0.00\n",
+              "0    154  ...            0.00\n",
+              "0    154  ...            0.16\n",
+              "\n",
+              "[5 rows x 5 columns]"
+            ]
+          },
+          "metadata": {},
+          "execution_count": 6
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 206
+        },
+        "id": "zSULDWt1VgjN",
+        "outputId": "365b5ede-2dc1-434b-c649-0eeb6817c1f1"
+      },
+      "source": [
+        "test = pd.read_pickle('gdrive/My Drive/sent_test.pkl')\n",
+        "test.head()"
+      ],
+      "execution_count": 7,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/html": [
+              "<div>\n",
+              "<style scoped>\n",
+              "    .dataframe tbody tr th:only-of-type {\n",
+              "        vertical-align: middle;\n",
+              "    }\n",
+              "\n",
+              "    .dataframe tbody tr th {\n",
+              "        vertical-align: top;\n",
+              "    }\n",
+              "\n",
+              "    .dataframe thead th {\n",
+              "        text-align: right;\n",
+              "    }\n",
+              "</style>\n",
+              "<table border=\"1\" class=\"dataframe\">\n",
+              "  <thead>\n",
+              "    <tr style=\"text-align: right;\">\n",
+              "      <th></th>\n",
+              "      <th>index</th>\n",
+              "      <th>feature</th>\n",
+              "      <th>raw_clause</th>\n",
+              "      <th>clause_vector</th>\n",
+              "      <th>clause_polarity</th>\n",
+              "    </tr>\n",
+              "  </thead>\n",
+              "  <tbody>\n",
+              "    <tr>\n",
+              "      <th>0</th>\n",
+              "      <td>176</td>\n",
+              "      <td>burger</td>\n",
+              "      <td>I have nt had such a delicious burger is a while</td>\n",
+              "      <td>[[0.15711, 0.65606, 0.0021149, -0.65144, -0.28...</td>\n",
+              "      <td>0.5</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>0</th>\n",
+              "      <td>176</td>\n",
+              "      <td>while</td>\n",
+              "      <td>I have nt had such a delicious burger is a while</td>\n",
+              "      <td>[[0.15711, 0.65606, 0.0021149, -0.65144, -0.28...</td>\n",
+              "      <td>0.5</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>0</th>\n",
+              "      <td>176</td>\n",
+              "      <td>burgers</td>\n",
+              "      <td>Great burgers at reasonable prices</td>\n",
+              "      <td>[[-0.42404, 0.0074403, -0.4665, -0.42496, -0.5...</td>\n",
+              "      <td>0.5</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>0</th>\n",
+              "      <td>176</td>\n",
+              "      <td>prices</td>\n",
+              "      <td>Great burgers at reasonable prices</td>\n",
+              "      <td>[[-0.42404, 0.0074403, -0.4665, -0.42496, -0.5...</td>\n",
+              "      <td>0.5</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>0</th>\n",
+              "      <td>176</td>\n",
+              "      <td>Onion</td>\n",
+              "      <td>Onion rings are crispy awesome too</td>\n",
+              "      <td>[[0.65609, 0.03754, -0.14359, -0.47495, 0.8703...</td>\n",
+              "      <td>1.0</td>\n",
+              "    </tr>\n",
+              "  </tbody>\n",
+              "</table>\n",
+              "</div>"
+            ],
+            "text/plain": [
+              "   index  ... clause_polarity\n",
+              "0    176  ...             0.5\n",
+              "0    176  ...             0.5\n",
+              "0    176  ...             0.5\n",
+              "0    176  ...             0.5\n",
+              "0    176  ...             1.0\n",
+              "\n",
+              "[5 rows x 5 columns]"
+            ]
+          },
+          "metadata": {},
+          "execution_count": 7
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 206
+        },
+        "id": "fmTPEeuwVgjO",
+        "outputId": "46ae64d6-8586-4348-d017-d5d56ee08b88"
+      },
+      "source": [
+        "val = pd.read_pickle('gdrive/My Drive/sent_validate.pkl')\n",
+        "val.head()"
+      ],
+      "execution_count": 8,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/html": [
+              "<div>\n",
+              "<style scoped>\n",
+              "    .dataframe tbody tr th:only-of-type {\n",
+              "        vertical-align: middle;\n",
+              "    }\n",
+              "\n",
+              "    .dataframe tbody tr th {\n",
+              "        vertical-align: top;\n",
+              "    }\n",
+              "\n",
+              "    .dataframe thead th {\n",
+              "        text-align: right;\n",
+              "    }\n",
+              "</style>\n",
+              "<table border=\"1\" class=\"dataframe\">\n",
+              "  <thead>\n",
+              "    <tr style=\"text-align: right;\">\n",
+              "      <th></th>\n",
+              "      <th>index</th>\n",
+              "      <th>feature</th>\n",
+              "      <th>raw_clause</th>\n",
+              "      <th>clause_vector</th>\n",
+              "      <th>clause_polarity</th>\n",
+              "    </tr>\n",
+              "  </thead>\n",
+              "  <tbody>\n",
+              "    <tr>\n",
+              "      <th>0</th>\n",
+              "      <td>296</td>\n",
+              "      <td>friends</td>\n",
+              "      <td>Outdoor is kinda hot to chill with friends</td>\n",
+              "      <td>[[-0.54264, 0.41476, 1.0322, -0.40244, 0.46691...</td>\n",
+              "      <td>0.25</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>0</th>\n",
+              "      <td>296</td>\n",
+              "      <td>Customer</td>\n",
+              "      <td>Customer service good</td>\n",
+              "      <td>[[-0.4224, -0.13313, -0.41418, -0.23677, 0.190...</td>\n",
+              "      <td>0.70</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>0</th>\n",
+              "      <td>296</td>\n",
+              "      <td>service</td>\n",
+              "      <td>Customer service good</td>\n",
+              "      <td>[[-0.4224, -0.13313, -0.41418, -0.23677, 0.190...</td>\n",
+              "      <td>0.70</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>0</th>\n",
+              "      <td>112</td>\n",
+              "      <td>review</td>\n",
+              "      <td>Thank you for leaving a review</td>\n",
+              "      <td>[[-0.49886, 0.76602, 0.89751, -0.78547, -0.685...</td>\n",
+              "      <td>0.00</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>0</th>\n",
+              "      <td>112</td>\n",
+              "      <td>dinner</td>\n",
+              "      <td>\\r\\n\\r\\n Restaurant Ibid is now re - opened fo...</td>\n",
+              "      <td>[[-0.54264, 0.41476, 1.0322, -0.40244, 0.46691...</td>\n",
+              "      <td>0.00</td>\n",
+              "    </tr>\n",
+              "  </tbody>\n",
+              "</table>\n",
+              "</div>"
+            ],
+            "text/plain": [
+              "   index  ... clause_polarity\n",
+              "0    296  ...            0.25\n",
+              "0    296  ...            0.70\n",
+              "0    296  ...            0.70\n",
+              "0    112  ...            0.00\n",
+              "0    112  ...            0.00\n",
+              "\n",
+              "[5 rows x 5 columns]"
+            ]
+          },
+          "metadata": {},
+          "execution_count": 8
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 293
+        },
+        "id": "cb8DOMdxo0bs",
+        "outputId": "f8582277-4c5a-4893-db54-a197f77b95da"
+      },
+      "source": [
+        "to_pred = pd.read_pickle('gdrive/My Drive/testing_sent_df.pkl')\n",
+        "to_pred.head()"
+      ],
+      "execution_count": 9,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/html": [
+              "<div>\n",
+              "<style scoped>\n",
+              "    .dataframe tbody tr th:only-of-type {\n",
+              "        vertical-align: middle;\n",
+              "    }\n",
+              "\n",
+              "    .dataframe tbody tr th {\n",
+              "        vertical-align: top;\n",
+              "    }\n",
+              "\n",
+              "    .dataframe thead th {\n",
+              "        text-align: right;\n",
+              "    }\n",
+              "</style>\n",
+              "<table border=\"1\" class=\"dataframe\">\n",
+              "  <thead>\n",
+              "    <tr style=\"text-align: right;\">\n",
+              "      <th></th>\n",
+              "      <th>restaurant</th>\n",
+              "      <th>stars</th>\n",
+              "      <th>date</th>\n",
+              "      <th>feat_index</th>\n",
+              "      <th>index</th>\n",
+              "      <th>feature</th>\n",
+              "      <th>category</th>\n",
+              "      <th>raw_clause</th>\n",
+              "      <th>clause_vector</th>\n",
+              "      <th>clause_polarity</th>\n",
+              "    </tr>\n",
+              "  </thead>\n",
+              "  <tbody>\n",
+              "    <tr>\n",
+              "      <th>0</th>\n",
+              "      <td>Gravy_Restaurant</td>\n",
+              "      <td>5 stars</td>\n",
+              "      <td>2 days ago</td>\n",
+              "      <td>0</td>\n",
+              "      <td>There are lots of Indian restaurant at Tanjong...</td>\n",
+              "      <td>lots</td>\n",
+              "      <td>price</td>\n",
+              "      <td>There are lots of Indian restaurant at Tanjong...</td>\n",
+              "      <td>[[-0.51533, 0.83186, 0.22457, -0.73865, 0.1871...</td>\n",
+              "      <td>0.0</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>0</th>\n",
+              "      <td>Gravy_Restaurant</td>\n",
+              "      <td>5 stars</td>\n",
+              "      <td>2 days ago</td>\n",
+              "      <td>1</td>\n",
+              "      <td>There are lots of Indian restaurant at Tanjong...</td>\n",
+              "      <td>restaurant</td>\n",
+              "      <td>ambience</td>\n",
+              "      <td>There are lots of Indian restaurant at Tanjong...</td>\n",
+              "      <td>[[-0.51533, 0.83186, 0.22457, -0.73865, 0.1871...</td>\n",
+              "      <td>0.0</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>0</th>\n",
+              "      <td>Gravy_Restaurant</td>\n",
+              "      <td>5 stars</td>\n",
+              "      <td>2 days ago</td>\n",
+              "      <td>2</td>\n",
+              "      <td>There are lots of Indian restaurant at Tanjong...</td>\n",
+              "      <td>time</td>\n",
+              "      <td>price</td>\n",
+              "      <td>Second time dining out since the dining restri...</td>\n",
+              "      <td>[[-0.024221, -0.034855, 0.3571, -0.02155, -0.5...</td>\n",
+              "      <td>0.0</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>0</th>\n",
+              "      <td>Gravy_Restaurant</td>\n",
+              "      <td>5 stars</td>\n",
+              "      <td>2 days ago</td>\n",
+              "      <td>3</td>\n",
+              "      <td>There are lots of Indian restaurant at Tanjong...</td>\n",
+              "      <td>dining</td>\n",
+              "      <td>ambience</td>\n",
+              "      <td>Second time dining out since the dining restri...</td>\n",
+              "      <td>[[-0.024221, -0.034855, 0.3571, -0.02155, -0.5...</td>\n",
+              "      <td>0.0</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>0</th>\n",
+              "      <td>Gravy_Restaurant</td>\n",
+              "      <td>5 stars</td>\n",
+              "      <td>2 days ago</td>\n",
+              "      <td>4</td>\n",
+              "      <td>There are lots of Indian restaurant at Tanjong...</td>\n",
+              "      <td>restrictions</td>\n",
+              "      <td>price</td>\n",
+              "      <td>Second time dining out since the dining restri...</td>\n",
+              "      <td>[[-0.024221, -0.034855, 0.3571, -0.02155, -0.5...</td>\n",
+              "      <td>0.0</td>\n",
+              "    </tr>\n",
+              "  </tbody>\n",
+              "</table>\n",
+              "</div>"
+            ],
+            "text/plain": [
+              "         restaurant  ... clause_polarity\n",
+              "0  Gravy_Restaurant  ...             0.0\n",
+              "0  Gravy_Restaurant  ...             0.0\n",
+              "0  Gravy_Restaurant  ...             0.0\n",
+              "0  Gravy_Restaurant  ...             0.0\n",
+              "0  Gravy_Restaurant  ...             0.0\n",
+              "\n",
+              "[5 rows x 10 columns]"
+            ]
+          },
+          "metadata": {},
+          "execution_count": 9
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "SWISlXr6cng-"
+      },
+      "source": [
+        "number_of_most_frequent_words=10000\n",
+        "max_len=500"
+      ],
+      "execution_count": 12,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "JUGC4F8Hf_wZ"
+      },
+      "source": [
+        "X_train = train['raw_clause']\n",
+        "y_train = train['clause_polarity']"
+      ],
+      "execution_count": 13,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "bcPMH38Vf9yK"
+      },
+      "source": [
+        "X_val = val['raw_clause']\n",
+        "y_val = val['clause_polarity']"
+      ],
+      "execution_count": 14,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "lN-Peul6gM-T"
+      },
+      "source": [
+        "X_test = test['raw_clause']\n",
+        "y_test= test['clause_polarity']"
+      ],
+      "execution_count": 15,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "0bfqJBRigM-U"
+      },
+      "source": [
+        "X_tp = to_pred['raw_clause']\n",
+        "y_tp = to_pred['clause_polarity']"
+      ],
+      "execution_count": 16,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "b0xybflOx3vc",
+        "outputId": "5cfe6b4d-60ef-4948-89f0-48bcfceeec4c"
+      },
+      "source": [
+        "X_val"
+      ],
+      "execution_count": 17,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": [
+              "0           Outdoor is kinda hot to chill with friends\n",
+              "0                                Customer service good\n",
+              "0                                Customer service good\n",
+              "0                       Thank you for leaving a review\n",
+              "0    \\r\\n\\r\\n Restaurant Ibid is now re - opened fo...\n",
+              "                           ...                        \n",
+              "0                                 this is steak heaven\n",
+              "0    was whisked away to a unforgettable experience...\n",
+              "0    was whisked away to a unforgettable experience...\n",
+              "0                            go for the early cut menu\n",
+              "0                            go for the early cut menu\n",
+              "Name: raw_clause, Length: 2902, dtype: object"
+            ]
+          },
+          "metadata": {},
+          "execution_count": 17
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "W175W3PM0pmB",
+        "outputId": "4dd2d197-e616-4e17-c183-9fa26e9f2b54"
+      },
+      "source": [
+        "X_train"
+      ],
+      "execution_count": 18,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": [
+              "0                       Thank you for leaving a review\n",
+              "0    \\r\\n\\r\\n Restaurant Ibid is now re - opened fo...\n",
+              "0    \\r\\n\\r\\n Restaurant Ibid is now re - opened fo...\n",
+              "0             \\r\\n\\r\\n Looking forwards to hosting you\n",
+              "0                  reservations are highly recommended\n",
+              "                           ...                        \n",
+              "0                                   Came in vegetarian\n",
+              "0                                           The sauces\n",
+              "0                   came out wanting to eat more steak\n",
+              "0                                          service and\n",
+              "0                                                sides\n",
+              "Name: raw_clause, Length: 8909, dtype: object"
+            ]
+          },
+          "metadata": {},
+          "execution_count": 18
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "RPV2YzQ5zqno"
+      },
+      "source": [
+        "X_train = train['raw_clause'].to_numpy()\n",
+        "X_val = val['raw_clause'].to_numpy()\n",
+        "X_test = test['raw_clause'].to_numpy()\n",
+        "X_tp = to_pred['raw_clause'].to_numpy()"
+      ],
+      "execution_count": 19,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "HmI-XseRp4B0"
+      },
+      "source": [
+        "from keras.preprocessing.text import Tokenizer"
+      ],
+      "execution_count": 21,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "CkIU6nlnxpyK"
+      },
+      "source": [
+        "tokenizer_obj = Tokenizer()\n",
+        "tokenizer_obj.fit_on_texts(X_train)"
+      ],
+      "execution_count": 22,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "uuhEWIolp4Gk"
+      },
+      "source": [
+        "X_train_tokens = tokenizer_obj.texts_to_sequences(X_train)\n",
+        "X_val_tokens = tokenizer_obj.texts_to_sequences(X_val)\n",
+        "X_test_tokens = tokenizer_obj.texts_to_sequences(X_test)\n",
+        "X_tp_tokens = tokenizer_obj.texts_to_sequences(X_tp)"
+      ],
+      "execution_count": 23,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "YpXtp5OHyJ48"
+      },
+      "source": [
+        "max_length = max([len(s.split()) for s in X_train])"
+      ],
+      "execution_count": 24,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "OZYGAe1mx7O7"
+      },
+      "source": [
+        "vocab_size = len(tokenizer_obj.word_index) + 1"
+      ],
+      "execution_count": 25,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "92AAGoXJqs7C"
+      },
+      "source": [
+        "from keras.preprocessing.sequence import pad_sequences"
+      ],
+      "execution_count": 27,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "BuuPf1JJyY7N"
+      },
+      "source": [
+        "X_train_pad = pad_sequences(X_train_tokens, maxlen=max_length, padding='post')\n",
+        "X_val_pad = pad_sequences(X_val_tokens, maxlen=max_length, padding='post')\n",
+        "X_test_pad = pad_sequences(X_test_tokens, maxlen=max_length, padding='post')\n",
+        "X_tp_pad = pad_sequences(X_tp_tokens, maxlen=max_length, padding='post')"
+      ],
+      "execution_count": 28,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "xh2LEaP54PUh"
+      },
+      "source": [
+        "from keras.callbacks import ReduceLROnPlateau,EarlyStopping"
+      ],
+      "execution_count": 29,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "SP64sRD54FOs"
+      },
+      "source": [
+        "rlr = ReduceLROnPlateau(monitor=\"val_loss\", factor=0.2, patience=5, min_lr = 0.00001,verbose=1)\n",
+        "early = EarlyStopping(monitor='val_accuracy', mode='max', patience=10, restore_best_weights=True)"
+      ],
+      "execution_count": 30,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "reW_gSwaDbPb",
+        "outputId": "b1c78847-c097-463a-ecbe-7b6feed776d5"
+      },
+      "source": [
+        "from tensorflow.keras import Sequential\n",
+        "from keras.layers import GRU,Embedding, Flatten, Conv1D, GlobalMaxPooling1D, Dropout, Dense, Input\n",
+        "\n",
+        "EMBEDDING_DIM = 100\n",
+        "model = Sequential()\n",
+        "e = Embedding(vocab_size, EMBEDDING_DIM, input_length=max_length)\n",
+        "model.add(e)\n",
+        "model.add(Conv1D(1024, 3, padding='valid', activation='relu', strides=1))\n",
+        "model.add(GlobalMaxPooling1D())\n",
+        "model.add(Dropout(0.2))\n",
+        "model.add(Dense(256, activation='relu'))\n",
+        "model.add(Dense(1))\n",
+        "model.compile(loss=\"mse\", optimizer=\"adam\", metrics=['accuracy'])\n",
+        "model.fit(X_train_pad, y_train, validation_data=(X_val_pad, y_val), epochs=100, batch_size=32, verbose=2, callbacks=[rlr, early])"
+      ],
+      "execution_count": 33,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Epoch 1/100\n",
+            "279/279 - 23s - loss: 0.0410 - accuracy: 0.4614 - val_loss: 0.0222 - val_accuracy: 0.4635 - lr: 0.0010 - 23s/epoch - 83ms/step\n",
+            "Epoch 2/100\n",
+            "279/279 - 22s - loss: 0.0092 - accuracy: 0.4730 - val_loss: 0.0154 - val_accuracy: 0.4673 - lr: 0.0010 - 22s/epoch - 78ms/step\n",
+            "Epoch 3/100\n",
+            "279/279 - 22s - loss: 0.0044 - accuracy: 0.4736 - val_loss: 0.0133 - val_accuracy: 0.4666 - lr: 0.0010 - 22s/epoch - 78ms/step\n",
+            "Epoch 4/100\n",
+            "279/279 - 22s - loss: 0.0029 - accuracy: 0.4736 - val_loss: 0.0118 - val_accuracy: 0.4669 - lr: 0.0010 - 22s/epoch - 78ms/step\n",
+            "Epoch 5/100\n",
+            "279/279 - 22s - loss: 0.0022 - accuracy: 0.4736 - val_loss: 0.0114 - val_accuracy: 0.4669 - lr: 0.0010 - 22s/epoch - 78ms/step\n",
+            "Epoch 6/100\n",
+            "279/279 - 22s - loss: 0.0019 - accuracy: 0.4736 - val_loss: 0.0116 - val_accuracy: 0.4669 - lr: 0.0010 - 22s/epoch - 78ms/step\n",
+            "Epoch 7/100\n",
+            "279/279 - 22s - loss: 0.0017 - accuracy: 0.4736 - val_loss: 0.0112 - val_accuracy: 0.4662 - lr: 0.0010 - 22s/epoch - 79ms/step\n",
+            "Epoch 8/100\n",
+            "279/279 - 22s - loss: 0.0016 - accuracy: 0.4736 - val_loss: 0.0107 - val_accuracy: 0.4669 - lr: 0.0010 - 22s/epoch - 79ms/step\n",
+            "Epoch 9/100\n",
+            "279/279 - 22s - loss: 0.0014 - accuracy: 0.4736 - val_loss: 0.0104 - val_accuracy: 0.4673 - lr: 0.0010 - 22s/epoch - 79ms/step\n",
+            "Epoch 10/100\n",
+            "279/279 - 22s - loss: 0.0012 - accuracy: 0.4736 - val_loss: 0.0106 - val_accuracy: 0.4666 - lr: 0.0010 - 22s/epoch - 79ms/step\n",
+            "Epoch 11/100\n",
+            "279/279 - 22s - loss: 0.0011 - accuracy: 0.4736 - val_loss: 0.0098 - val_accuracy: 0.4673 - lr: 0.0010 - 22s/epoch - 79ms/step\n",
+            "Epoch 12/100\n",
+            "279/279 - 22s - loss: 0.0010 - accuracy: 0.4736 - val_loss: 0.0101 - val_accuracy: 0.4666 - lr: 0.0010 - 22s/epoch - 78ms/step\n"
+          ]
+        },
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": [
+              "<keras.callbacks.History at 0x7f0c2c421b90>"
+            ]
+          },
+          "metadata": {},
+          "execution_count": 33
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "JZk5w7EqNxci"
+      },
+      "source": [
+        "pred = model.predict(X_test_pad)"
+      ],
+      "execution_count": 34,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "DuCK2Nq5OFG9",
+        "outputId": "ab2ab40f-076a-42ee-85dc-07dd6c353b5e"
+      },
+      "source": [
+        "pred"
+      ],
+      "execution_count": 35,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": [
+              "array([[0.5979684 ],\n",
+              "       [0.5979684 ],\n",
+              "       [0.5543965 ],\n",
+              "       ...,\n",
+              "       [0.08639959],\n",
+              "       [0.08639959],\n",
+              "       [0.08639959]], dtype=float32)"
+            ]
+          },
+          "metadata": {},
+          "execution_count": 35
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "mraycbvKNxcj",
+        "outputId": "3ef2da73-14cd-4296-cd90-d723253121f6"
+      },
+      "source": [
+        "from sklearn.metrics import mean_squared_error\n",
+        "mean_squared_error(y_test, pred)"
+      ],
+      "execution_count": 36,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": [
+              "0.017489370575872656"
+            ]
+          },
+          "metadata": {},
+          "execution_count": 36
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "aOvQzHcrN9OE"
+      },
+      "source": [
+        "final = test['feature']"
+      ],
+      "execution_count": 37,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "_GcgREDEN9OE",
+        "outputId": "98ed4167-c2b7-4d92-8e49-fba772e52b3b"
+      },
+      "source": [
+        "pred.flatten()"
+      ],
+      "execution_count": 38,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": [
+              "array([0.5979684 , 0.5979684 , 0.5543965 , ..., 0.08639959, 0.08639959,\n",
+              "       0.08639959], dtype=float32)"
+            ]
+          },
+          "metadata": {},
+          "execution_count": 38
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "NWslnmWHN9OF",
+        "outputId": "16974c5f-8ca1-4b8b-b20f-1f783e0a386e"
+      },
+      "source": [
+        "final.to_numpy()"
+      ],
+      "execution_count": 39,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": [
+              "array(['burger', 'while', 'burgers', ..., 'couple', 'dozen', 'oysters'],\n",
+              "      dtype=object)"
+            ]
+          },
+          "metadata": {},
+          "execution_count": 39
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "PPkRMRQMN9OF"
+      },
+      "source": [
+        "pred = pd.DataFrame(pred)\n",
+        "final = pd.DataFrame(final)"
+      ],
+      "execution_count": 40,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "nwMcvicZN9OF"
+      },
+      "source": [
+        "result4 = final"
+      ],
+      "execution_count": 41,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "NDDp16OpN9OF"
+      },
+      "source": [
+        "result4.index = pred.index"
+      ],
+      "execution_count": 42,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "C6qOvStUN9OG"
+      },
+      "source": [
+        "result4['pred'] = pred"
+      ],
+      "execution_count": 43,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 424
+        },
+        "id": "dBnlWovAta95",
+        "outputId": "0119f52f-df0c-45e0-cb62-7a8ab0444a79"
+      },
+      "source": [
+        "result4"
+      ],
+      "execution_count": 50,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/html": [
+              "<div>\n",
+              "<style scoped>\n",
+              "    .dataframe tbody tr th:only-of-type {\n",
+              "        vertical-align: middle;\n",
+              "    }\n",
+              "\n",
+              "    .dataframe tbody tr th {\n",
+              "        vertical-align: top;\n",
+              "    }\n",
+              "\n",
+              "    .dataframe thead th {\n",
+              "        text-align: right;\n",
+              "    }\n",
+              "</style>\n",
+              "<table border=\"1\" class=\"dataframe\">\n",
+              "  <thead>\n",
+              "    <tr style=\"text-align: right;\">\n",
+              "      <th></th>\n",
+              "      <th>feature</th>\n",
+              "      <th>pred</th>\n",
+              "    </tr>\n",
+              "  </thead>\n",
+              "  <tbody>\n",
+              "    <tr>\n",
+              "      <th>0</th>\n",
+              "      <td>burger</td>\n",
+              "      <td>0.597968</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>1</th>\n",
+              "      <td>while</td>\n",
+              "      <td>0.597968</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>2</th>\n",
+              "      <td>burgers</td>\n",
+              "      <td>0.554397</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>3</th>\n",
+              "      <td>prices</td>\n",
+              "      <td>0.554397</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>4</th>\n",
+              "      <td>Onion</td>\n",
+              "      <td>0.934958</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>...</th>\n",
+              "      <td>...</td>\n",
+              "      <td>...</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>2973</th>\n",
+              "      <td>service</td>\n",
+              "      <td>1.043494</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>2974</th>\n",
+              "      <td>porterhouse</td>\n",
+              "      <td>-0.026459</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>2975</th>\n",
+              "      <td>couple</td>\n",
+              "      <td>0.086400</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>2976</th>\n",
+              "      <td>dozen</td>\n",
+              "      <td>0.086400</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>2977</th>\n",
+              "      <td>oysters</td>\n",
+              "      <td>0.086400</td>\n",
+              "    </tr>\n",
+              "  </tbody>\n",
+              "</table>\n",
+              "<p>2978 rows × 2 columns</p>\n",
+              "</div>"
+            ],
+            "text/plain": [
+              "          feature      pred\n",
+              "0          burger  0.597968\n",
+              "1           while  0.597968\n",
+              "2         burgers  0.554397\n",
+              "3          prices  0.554397\n",
+              "4           Onion  0.934958\n",
+              "...           ...       ...\n",
+              "2973      service  1.043494\n",
+              "2974  porterhouse -0.026459\n",
+              "2975       couple  0.086400\n",
+              "2976        dozen  0.086400\n",
+              "2977      oysters  0.086400\n",
+              "\n",
+              "[2978 rows x 2 columns]"
+            ]
+          },
+          "metadata": {},
+          "execution_count": 50
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 424
+        },
+        "id": "NC5FiX4OtTdI",
+        "outputId": "a0dc08bc-8d82-4757-f5c2-5e68466eebe4"
+      },
+      "source": [
+        "y_test"
+      ],
+      "execution_count": 49,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/html": [
+              "<div>\n",
+              "<style scoped>\n",
+              "    .dataframe tbody tr th:only-of-type {\n",
+              "        vertical-align: middle;\n",
+              "    }\n",
+              "\n",
+              "    .dataframe tbody tr th {\n",
+              "        vertical-align: top;\n",
+              "    }\n",
+              "\n",
+              "    .dataframe thead th {\n",
+              "        text-align: right;\n",
+              "    }\n",
+              "</style>\n",
+              "<table border=\"1\" class=\"dataframe\">\n",
+              "  <thead>\n",
+              "    <tr style=\"text-align: right;\">\n",
+              "      <th></th>\n",
+              "      <th>clause_polarity</th>\n",
+              "    </tr>\n",
+              "  </thead>\n",
+              "  <tbody>\n",
+              "    <tr>\n",
+              "      <th>0</th>\n",
+              "      <td>0.5</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>0</th>\n",
+              "      <td>0.5</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>0</th>\n",
+              "      <td>0.5</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>0</th>\n",
+              "      <td>0.5</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>0</th>\n",
+              "      <td>1.0</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>...</th>\n",
+              "      <td>...</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>0</th>\n",
+              "      <td>1.0</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>0</th>\n",
+              "      <td>0.0</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>0</th>\n",
+              "      <td>0.0</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>0</th>\n",
+              "      <td>0.0</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>0</th>\n",
+              "      <td>0.0</td>\n",
+              "    </tr>\n",
+              "  </tbody>\n",
+              "</table>\n",
+              "<p>2978 rows × 1 columns</p>\n",
+              "</div>"
+            ],
+            "text/plain": [
+              "    clause_polarity\n",
+              "0               0.5\n",
+              "0               0.5\n",
+              "0               0.5\n",
+              "0               0.5\n",
+              "0               1.0\n",
+              "..              ...\n",
+              "0               1.0\n",
+              "0               0.0\n",
+              "0               0.0\n",
+              "0               0.0\n",
+              "0               0.0\n",
+              "\n",
+              "[2978 rows x 1 columns]"
+            ]
+          },
+          "metadata": {},
+          "execution_count": 49
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 17
+        },
+        "id": "vayCS5KqPSFe",
+        "outputId": "d9af31ba-0caa-4bf5-c4ec-230c41d0678e"
+      },
+      "source": [
+        "from google.colab import files\n",
+        "result4.to_csv('preds4222.csv', index=False) \n",
+        "files.download('preds4222.csv')"
+      ],
+      "execution_count": null,
+      "outputs": [
+        {
+          "output_type": "display_data",
+          "data": {
+            "application/javascript": [
+              "\n",
+              "    async function download(id, filename, size) {\n",
+              "      if (!google.colab.kernel.accessAllowed) {\n",
+              "        return;\n",
+              "      }\n",
+              "      const div = document.createElement('div');\n",
+              "      const label = document.createElement('label');\n",
+              "      label.textContent = `Downloading \"${filename}\": `;\n",
+              "      div.appendChild(label);\n",
+              "      const progress = document.createElement('progress');\n",
+              "      progress.max = size;\n",
+              "      div.appendChild(progress);\n",
+              "      document.body.appendChild(div);\n",
+              "\n",
+              "      const buffers = [];\n",
+              "      let downloaded = 0;\n",
+              "\n",
+              "      const channel = await google.colab.kernel.comms.open(id);\n",
+              "      // Send a message to notify the kernel that we're ready.\n",
+              "      channel.send({})\n",
+              "\n",
+              "      for await (const message of channel.messages) {\n",
+              "        // Send a message to notify the kernel that we're ready.\n",
+              "        channel.send({})\n",
+              "        if (message.buffers) {\n",
+              "          for (const buffer of message.buffers) {\n",
+              "            buffers.push(buffer);\n",
+              "            downloaded += buffer.byteLength;\n",
+              "            progress.value = downloaded;\n",
+              "          }\n",
+              "        }\n",
+              "      }\n",
+              "      const blob = new Blob(buffers, {type: 'application/binary'});\n",
+              "      const a = document.createElement('a');\n",
+              "      a.href = window.URL.createObjectURL(blob);\n",
+              "      a.download = filename;\n",
+              "      div.appendChild(a);\n",
+              "      a.click();\n",
+              "      div.remove();\n",
+              "    }\n",
+              "  "
+            ],
+            "text/plain": [
+              "<IPython.core.display.Javascript object>"
+            ]
+          },
+          "metadata": {}
+        },
+        {
+          "output_type": "display_data",
+          "data": {
+            "application/javascript": [
+              "download(\"download_fad7df5b-7516-4d9a-baa0-116d69d61a16\", \"preds4222.csv\", 55102)"
+            ],
+            "text/plain": [
+              "<IPython.core.display.Javascript object>"
+            ]
+          },
+          "metadata": {}
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 17
+        },
+        "id": "VuVqXBN7Pb5W",
+        "outputId": "716ba26d-e344-4d22-e63e-713178322e06"
+      },
+      "source": [
+        "from google.colab import files\n",
+        "y_test.to_csv('ytest.csv', index=False) \n",
+        "files.download('ytest.csv')"
+      ],
+      "execution_count": null,
+      "outputs": [
+        {
+          "output_type": "display_data",
+          "data": {
+            "application/javascript": [
+              "\n",
+              "    async function download(id, filename, size) {\n",
+              "      if (!google.colab.kernel.accessAllowed) {\n",
+              "        return;\n",
+              "      }\n",
+              "      const div = document.createElement('div');\n",
+              "      const label = document.createElement('label');\n",
+              "      label.textContent = `Downloading \"${filename}\": `;\n",
+              "      div.appendChild(label);\n",
+              "      const progress = document.createElement('progress');\n",
+              "      progress.max = size;\n",
+              "      div.appendChild(progress);\n",
+              "      document.body.appendChild(div);\n",
+              "\n",
+              "      const buffers = [];\n",
+              "      let downloaded = 0;\n",
+              "\n",
+              "      const channel = await google.colab.kernel.comms.open(id);\n",
+              "      // Send a message to notify the kernel that we're ready.\n",
+              "      channel.send({})\n",
+              "\n",
+              "      for await (const message of channel.messages) {\n",
+              "        // Send a message to notify the kernel that we're ready.\n",
+              "        channel.send({})\n",
+              "        if (message.buffers) {\n",
+              "          for (const buffer of message.buffers) {\n",
+              "            buffers.push(buffer);\n",
+              "            downloaded += buffer.byteLength;\n",
+              "            progress.value = downloaded;\n",
+              "          }\n",
+              "        }\n",
+              "      }\n",
+              "      const blob = new Blob(buffers, {type: 'application/binary'});\n",
+              "      const a = document.createElement('a');\n",
+              "      a.href = window.URL.createObjectURL(blob);\n",
+              "      a.download = filename;\n",
+              "      div.appendChild(a);\n",
+              "      a.click();\n",
+              "      div.remove();\n",
+              "    }\n",
+              "  "
+            ],
+            "text/plain": [
+              "<IPython.core.display.Javascript object>"
+            ]
+          },
+          "metadata": {}
+        },
+        {
+          "output_type": "display_data",
+          "data": {
+            "application/javascript": [
+              "download(\"download_82d42326-ddc8-44c2-ad31-30bab7fa6347\", \"ytest.csv\", 19620)"
+            ],
+            "text/plain": [
+              "<IPython.core.display.Javascript object>"
+            ]
+          },
+          "metadata": {}
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "a0M1Om0-q604"
+      },
+      "source": [
+        ""
+      ],
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "YXDI4y5UtfGV"
+      },
+      "source": [
+        ""
+      ],
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "pv5iJiMutioM"
+      },
+      "source": [
+        "pred = model.predict(X_tp_pad)"
+      ],
+      "execution_count": 67,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "8IpCtHkjtioN",
+        "outputId": "42e25175-b462-4cbc-bcc1-a5b8930bb03d"
+      },
+      "source": [
+        "pred"
+      ],
+      "execution_count": 68,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": [
+              "array([[ 0.02025438],\n",
+              "       [ 0.02025438],\n",
+              "       [-0.00995666],\n",
+              "       ...,\n",
+              "       [ 0.27647686],\n",
+              "       [ 0.27647686],\n",
+              "       [ 0.7429442 ]], dtype=float32)"
+            ]
+          },
+          "metadata": {},
+          "execution_count": 68
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "rNcFQQV3tioN",
+        "outputId": "250729b5-0fb3-419f-afe2-3222050d73d1"
+      },
+      "source": [
+        "from sklearn.metrics import mean_squared_error\n",
+        "mean_squared_error(y_tp, pred)"
+      ],
+      "execution_count": 69,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": [
+              "0.015364141044826385"
+            ]
+          },
+          "metadata": {},
+          "execution_count": 69
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "iDjUDyVdtioN"
+      },
+      "source": [
+        "final = to_pred['feature']"
+      ],
+      "execution_count": 70,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "aKQR2rtCtioN",
+        "outputId": "09d975bc-2163-4fa4-8a74-9ce47dda2c72"
+      },
+      "source": [
+        "pred.flatten()"
+      ],
+      "execution_count": 71,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": [
+              "array([ 0.02025438,  0.02025438, -0.00995666, ...,  0.27647686,\n",
+              "        0.27647686,  0.7429442 ], dtype=float32)"
+            ]
+          },
+          "metadata": {},
+          "execution_count": 71
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "58fH2KAvtioO",
+        "outputId": "5027d645-4866-4f97-9e41-bed2d08cc430"
+      },
+      "source": [
+        "final.to_numpy()"
+      ],
+      "execution_count": 72,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": [
+              "array(['lots', 'restaurant', 'time', ..., 'tables', 'restaurant', 'menu'],\n",
+              "      dtype=object)"
+            ]
+          },
+          "metadata": {},
+          "execution_count": 72
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "JhRnmLmGtioO"
+      },
+      "source": [
+        "pred = pd.DataFrame(pred)\n",
+        "final = pd.DataFrame(final)"
+      ],
+      "execution_count": 73,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "H-ESpI4UtioP"
+      },
+      "source": [
+        "result_new = final"
+      ],
+      "execution_count": 74,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "3zIApKlmtioP"
+      },
+      "source": [
+        "result_new.index = pred.index"
+      ],
+      "execution_count": 75,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "FOo64ArktioP"
+      },
+      "source": [
+        "result_new['pred'] = pred"
+      ],
+      "execution_count": 76,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 424
+        },
+        "id": "IRH7-wfOtioP",
+        "outputId": "8cefc2a1-cb7b-422d-d3e9-7e742b3cef63"
+      },
+      "source": [
+        "result_new"
+      ],
+      "execution_count": 77,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/html": [
+              "<div>\n",
+              "<style scoped>\n",
+              "    .dataframe tbody tr th:only-of-type {\n",
+              "        vertical-align: middle;\n",
+              "    }\n",
+              "\n",
+              "    .dataframe tbody tr th {\n",
+              "        vertical-align: top;\n",
+              "    }\n",
+              "\n",
+              "    .dataframe thead th {\n",
+              "        text-align: right;\n",
+              "    }\n",
+              "</style>\n",
+              "<table border=\"1\" class=\"dataframe\">\n",
+              "  <thead>\n",
+              "    <tr style=\"text-align: right;\">\n",
+              "      <th></th>\n",
+              "      <th>feature</th>\n",
+              "      <th>pred</th>\n",
+              "    </tr>\n",
+              "  </thead>\n",
+              "  <tbody>\n",
+              "    <tr>\n",
+              "      <th>0</th>\n",
+              "      <td>lots</td>\n",
+              "      <td>0.020254</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>1</th>\n",
+              "      <td>restaurant</td>\n",
+              "      <td>0.020254</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>2</th>\n",
+              "      <td>time</td>\n",
+              "      <td>-0.009957</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>3</th>\n",
+              "      <td>dining</td>\n",
+              "      <td>-0.009957</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>4</th>\n",
+              "      <td>restrictions</td>\n",
+              "      <td>-0.009957</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>...</th>\n",
+              "      <td>...</td>\n",
+              "      <td>...</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>4225</th>\n",
+              "      <td>food</td>\n",
+              "      <td>0.732610</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>4226</th>\n",
+              "      <td>hospitality</td>\n",
+              "      <td>0.276477</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>4227</th>\n",
+              "      <td>tables</td>\n",
+              "      <td>0.276477</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>4228</th>\n",
+              "      <td>restaurant</td>\n",
+              "      <td>0.276477</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>4229</th>\n",
+              "      <td>menu</td>\n",
+              "      <td>0.742944</td>\n",
+              "    </tr>\n",
+              "  </tbody>\n",
+              "</table>\n",
+              "<p>4230 rows × 2 columns</p>\n",
+              "</div>"
+            ],
+            "text/plain": [
+              "           feature      pred\n",
+              "0             lots  0.020254\n",
+              "1       restaurant  0.020254\n",
+              "2             time -0.009957\n",
+              "3           dining -0.009957\n",
+              "4     restrictions -0.009957\n",
+              "...            ...       ...\n",
+              "4225          food  0.732610\n",
+              "4226   hospitality  0.276477\n",
+              "4227        tables  0.276477\n",
+              "4228    restaurant  0.276477\n",
+              "4229          menu  0.742944\n",
+              "\n",
+              "[4230 rows x 2 columns]"
+            ]
+          },
+          "metadata": {},
+          "execution_count": 77
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "4Nz90hZYtioP",
+        "outputId": "22680e7f-0c65-4a79-8c3f-173e8b1fc74a"
+      },
+      "source": [
+        "y_tp"
+      ],
+      "execution_count": 78,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": [
+              "0    0.000000\n",
+              "0    0.000000\n",
+              "0    0.000000\n",
+              "0    0.000000\n",
+              "0    0.000000\n",
+              "       ...   \n",
+              "0    0.400000\n",
+              "0    0.333333\n",
+              "0    0.333333\n",
+              "0    0.333333\n",
+              "0    0.400000\n",
+              "Name: clause_polarity, Length: 4230, dtype: float64"
+            ]
+          },
+          "metadata": {},
+          "execution_count": 78
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 17
+        },
+        "id": "eL_ayHrgtioQ",
+        "outputId": "5ff8fbdd-989f-4b19-becb-2f3e381de6f8"
+      },
+      "source": [
+        "from google.colab import files\n",
+        "result_new.to_csv('preds4222_newtest.csv', index=False) \n",
+        "files.download('preds4222_newtest.csv')"
+      ],
+      "execution_count": 79,
+      "outputs": [
+        {
+          "output_type": "display_data",
+          "data": {
+            "application/javascript": [
+              "\n",
+              "    async function download(id, filename, size) {\n",
+              "      if (!google.colab.kernel.accessAllowed) {\n",
+              "        return;\n",
+              "      }\n",
+              "      const div = document.createElement('div');\n",
+              "      const label = document.createElement('label');\n",
+              "      label.textContent = `Downloading \"${filename}\": `;\n",
+              "      div.appendChild(label);\n",
+              "      const progress = document.createElement('progress');\n",
+              "      progress.max = size;\n",
+              "      div.appendChild(progress);\n",
+              "      document.body.appendChild(div);\n",
+              "\n",
+              "      const buffers = [];\n",
+              "      let downloaded = 0;\n",
+              "\n",
+              "      const channel = await google.colab.kernel.comms.open(id);\n",
+              "      // Send a message to notify the kernel that we're ready.\n",
+              "      channel.send({})\n",
+              "\n",
+              "      for await (const message of channel.messages) {\n",
+              "        // Send a message to notify the kernel that we're ready.\n",
+              "        channel.send({})\n",
+              "        if (message.buffers) {\n",
+              "          for (const buffer of message.buffers) {\n",
+              "            buffers.push(buffer);\n",
+              "            downloaded += buffer.byteLength;\n",
+              "            progress.value = downloaded;\n",
+              "          }\n",
+              "        }\n",
+              "      }\n",
+              "      const blob = new Blob(buffers, {type: 'application/binary'});\n",
+              "      const a = document.createElement('a');\n",
+              "      a.href = window.URL.createObjectURL(blob);\n",
+              "      a.download = filename;\n",
+              "      div.appendChild(a);\n",
+              "      a.click();\n",
+              "      div.remove();\n",
+              "    }\n",
+              "  "
+            ],
+            "text/plain": [
+              "<IPython.core.display.Javascript object>"
+            ]
+          },
+          "metadata": {}
+        },
+        {
+          "output_type": "display_data",
+          "data": {
+            "application/javascript": [
+              "download(\"download_3774b220-c619-49a2-87a8-8d5d304b4cc9\", \"preds4222_newtest.csv\", 77244)"
+            ],
+            "text/plain": [
+              "<IPython.core.display.Javascript object>"
+            ]
+          },
+          "metadata": {}
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 17
+        },
+        "id": "VdcASzw7tioQ",
+        "outputId": "3218fd02-7631-41f4-f5a9-a654b33fb32a"
+      },
+      "source": [
+        "from google.colab import files\n",
+        "y_tp.to_csv('ynew.csv', index=False) \n",
+        "files.download('ynew.csv')"
+      ],
+      "execution_count": 80,
+      "outputs": [
+        {
+          "output_type": "display_data",
+          "data": {
+            "application/javascript": [
+              "\n",
+              "    async function download(id, filename, size) {\n",
+              "      if (!google.colab.kernel.accessAllowed) {\n",
+              "        return;\n",
+              "      }\n",
+              "      const div = document.createElement('div');\n",
+              "      const label = document.createElement('label');\n",
+              "      label.textContent = `Downloading \"${filename}\": `;\n",
+              "      div.appendChild(label);\n",
+              "      const progress = document.createElement('progress');\n",
+              "      progress.max = size;\n",
+              "      div.appendChild(progress);\n",
+              "      document.body.appendChild(div);\n",
+              "\n",
+              "      const buffers = [];\n",
+              "      let downloaded = 0;\n",
+              "\n",
+              "      const channel = await google.colab.kernel.comms.open(id);\n",
+              "      // Send a message to notify the kernel that we're ready.\n",
+              "      channel.send({})\n",
+              "\n",
+              "      for await (const message of channel.messages) {\n",
+              "        // Send a message to notify the kernel that we're ready.\n",
+              "        channel.send({})\n",
+              "        if (message.buffers) {\n",
+              "          for (const buffer of message.buffers) {\n",
+              "            buffers.push(buffer);\n",
+              "            downloaded += buffer.byteLength;\n",
+              "            progress.value = downloaded;\n",
+              "          }\n",
+              "        }\n",
+              "      }\n",
+              "      const blob = new Blob(buffers, {type: 'application/binary'});\n",
+              "      const a = document.createElement('a');\n",
+              "      a.href = window.URL.createObjectURL(blob);\n",
+              "      a.download = filename;\n",
+              "      div.appendChild(a);\n",
+              "      a.click();\n",
+              "      div.remove();\n",
+              "    }\n",
+              "  "
+            ],
+            "text/plain": [
+              "<IPython.core.display.Javascript object>"
+            ]
+          },
+          "metadata": {}
+        },
+        {
+          "output_type": "display_data",
+          "data": {
+            "application/javascript": [
+              "download(\"download_58085edf-8218-484c-93ac-d528b96f0574\", \"ynew.csv\", 27963)"
+            ],
+            "text/plain": [
+              "<IPython.core.display.Javascript object>"
+            ]
+          },
+          "metadata": {}
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "wRXYxrPMtfJR"
+      },
+      "source": [
+        ""
+      ],
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "sNL-5SVetfLp"
+      },
+      "source": [
+        ""
+      ],
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "0Yj9B9bguuBj"
+      },
+      "source": [
+        "rlr = ReduceLROnPlateau(monitor=\"val_loss\", factor=0.2, patience=5, min_lr = 0.00001,verbose=1)\n",
+        "early = EarlyStopping(monitor='val_loss', mode='min', patience=10, restore_best_weights=True)"
+      ],
+      "execution_count": 83,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "aLWpAGaZuuBm",
+        "outputId": "d600498c-efc6-468c-956e-000624cdf2fb"
+      },
+      "source": [
+        "from tensorflow.keras import Sequential\n",
+        "from keras.layers import GRU,Embedding, Flatten, Conv1D, GlobalMaxPooling1D, Dropout, Dense, Input\n",
+        "\n",
+        "EMBEDDING_DIM = 100\n",
+        "model = Sequential()\n",
+        "e = Embedding(vocab_size, EMBEDDING_DIM, input_length=max_length)\n",
+        "model.add(e)\n",
+        "model.add(Conv1D(1024, 3, padding='valid', activation='relu', strides=1))\n",
+        "model.add(GlobalMaxPooling1D())\n",
+        "model.add(Dropout(0.2))\n",
+        "model.add(Dense(256, activation='relu'))\n",
+        "model.add(Dense(1))\n",
+        "model.compile(loss=\"mse\", optimizer=\"adam\", metrics=['accuracy'])\n",
+        "model.fit(X_train_pad, y_train, validation_data=(X_val_pad, y_val), epochs=100, batch_size=32, verbose=2, callbacks=[rlr, early])"
+      ],
+      "execution_count": 84,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Epoch 1/100\n",
+            "279/279 - 23s - loss: 0.0416 - accuracy: 0.4609 - val_loss: 0.0230 - val_accuracy: 0.4649 - lr: 0.0010 - 23s/epoch - 83ms/step\n",
+            "Epoch 2/100\n",
+            "279/279 - 23s - loss: 0.0094 - accuracy: 0.4731 - val_loss: 0.0152 - val_accuracy: 0.4669 - lr: 0.0010 - 23s/epoch - 81ms/step\n",
+            "Epoch 3/100\n",
+            "279/279 - 23s - loss: 0.0044 - accuracy: 0.4736 - val_loss: 0.0135 - val_accuracy: 0.4666 - lr: 0.0010 - 23s/epoch - 81ms/step\n",
+            "Epoch 4/100\n",
+            "279/279 - 22s - loss: 0.0027 - accuracy: 0.4736 - val_loss: 0.0124 - val_accuracy: 0.4669 - lr: 0.0010 - 22s/epoch - 80ms/step\n",
+            "Epoch 5/100\n",
+            "279/279 - 22s - loss: 0.0022 - accuracy: 0.4736 - val_loss: 0.0122 - val_accuracy: 0.4666 - lr: 0.0010 - 22s/epoch - 80ms/step\n",
+            "Epoch 6/100\n",
+            "279/279 - 22s - loss: 0.0019 - accuracy: 0.4736 - val_loss: 0.0115 - val_accuracy: 0.4673 - lr: 0.0010 - 22s/epoch - 80ms/step\n",
+            "Epoch 7/100\n",
+            "279/279 - 22s - loss: 0.0015 - accuracy: 0.4736 - val_loss: 0.0113 - val_accuracy: 0.4673 - lr: 0.0010 - 22s/epoch - 79ms/step\n",
+            "Epoch 8/100\n",
+            "279/279 - 22s - loss: 0.0015 - accuracy: 0.4736 - val_loss: 0.0114 - val_accuracy: 0.4673 - lr: 0.0010 - 22s/epoch - 79ms/step\n",
+            "Epoch 9/100\n",
+            "279/279 - 22s - loss: 0.0014 - accuracy: 0.4736 - val_loss: 0.0113 - val_accuracy: 0.4666 - lr: 0.0010 - 22s/epoch - 79ms/step\n",
+            "Epoch 10/100\n",
+            "279/279 - 22s - loss: 0.0013 - accuracy: 0.4736 - val_loss: 0.0109 - val_accuracy: 0.4673 - lr: 0.0010 - 22s/epoch - 79ms/step\n",
+            "Epoch 11/100\n",
+            "279/279 - 22s - loss: 0.0014 - accuracy: 0.4736 - val_loss: 0.0107 - val_accuracy: 0.4673 - lr: 0.0010 - 22s/epoch - 79ms/step\n",
+            "Epoch 12/100\n",
+            "279/279 - 22s - loss: 0.0013 - accuracy: 0.4736 - val_loss: 0.0105 - val_accuracy: 0.4673 - lr: 0.0010 - 22s/epoch - 79ms/step\n",
+            "Epoch 13/100\n",
+            "279/279 - 22s - loss: 0.0012 - accuracy: 0.4736 - val_loss: 0.0104 - val_accuracy: 0.4673 - lr: 0.0010 - 22s/epoch - 79ms/step\n",
+            "Epoch 14/100\n",
+            "279/279 - 22s - loss: 0.0013 - accuracy: 0.4736 - val_loss: 0.0113 - val_accuracy: 0.4666 - lr: 0.0010 - 22s/epoch - 79ms/step\n",
+            "Epoch 15/100\n",
+            "279/279 - 22s - loss: 0.0011 - accuracy: 0.4736 - val_loss: 0.0099 - val_accuracy: 0.4669 - lr: 0.0010 - 22s/epoch - 79ms/step\n",
+            "Epoch 16/100\n",
+            "279/279 - 22s - loss: 9.9735e-04 - accuracy: 0.4736 - val_loss: 0.0103 - val_accuracy: 0.4666 - lr: 0.0010 - 22s/epoch - 79ms/step\n",
+            "Epoch 17/100\n",
+            "279/279 - 22s - loss: 9.6497e-04 - accuracy: 0.4736 - val_loss: 0.0099 - val_accuracy: 0.4666 - lr: 0.0010 - 22s/epoch - 79ms/step\n",
+            "Epoch 18/100\n",
+            "279/279 - 22s - loss: 0.0010 - accuracy: 0.4736 - val_loss: 0.0100 - val_accuracy: 0.4669 - lr: 0.0010 - 22s/epoch - 79ms/step\n",
+            "Epoch 19/100\n",
+            "279/279 - 22s - loss: 9.8966e-04 - accuracy: 0.4736 - val_loss: 0.0098 - val_accuracy: 0.4669 - lr: 0.0010 - 22s/epoch - 79ms/step\n",
+            "Epoch 20/100\n",
+            "279/279 - 22s - loss: 9.1246e-04 - accuracy: 0.4736 - val_loss: 0.0100 - val_accuracy: 0.4669 - lr: 0.0010 - 22s/epoch - 79ms/step\n",
+            "Epoch 21/100\n",
+            "279/279 - 22s - loss: 9.5551e-04 - accuracy: 0.4736 - val_loss: 0.0100 - val_accuracy: 0.4669 - lr: 0.0010 - 22s/epoch - 79ms/step\n",
+            "Epoch 22/100\n",
+            "279/279 - 22s - loss: 8.6132e-04 - accuracy: 0.4736 - val_loss: 0.0097 - val_accuracy: 0.4669 - lr: 0.0010 - 22s/epoch - 79ms/step\n",
+            "Epoch 23/100\n",
+            "279/279 - 22s - loss: 8.2604e-04 - accuracy: 0.4736 - val_loss: 0.0100 - val_accuracy: 0.4669 - lr: 0.0010 - 22s/epoch - 79ms/step\n",
+            "Epoch 24/100\n",
+            "279/279 - 22s - loss: 8.1059e-04 - accuracy: 0.4736 - val_loss: 0.0094 - val_accuracy: 0.4669 - lr: 0.0010 - 22s/epoch - 78ms/step\n",
+            "Epoch 25/100\n",
+            "279/279 - 22s - loss: 7.9787e-04 - accuracy: 0.4736 - val_loss: 0.0107 - val_accuracy: 0.4666 - lr: 0.0010 - 22s/epoch - 78ms/step\n",
+            "Epoch 26/100\n",
+            "279/279 - 22s - loss: 9.7454e-04 - accuracy: 0.4736 - val_loss: 0.0096 - val_accuracy: 0.4673 - lr: 0.0010 - 22s/epoch - 78ms/step\n",
+            "Epoch 27/100\n",
+            "279/279 - 22s - loss: 9.3938e-04 - accuracy: 0.4736 - val_loss: 0.0097 - val_accuracy: 0.4673 - lr: 0.0010 - 22s/epoch - 78ms/step\n",
+            "Epoch 28/100\n",
+            "279/279 - 22s - loss: 7.9462e-04 - accuracy: 0.4736 - val_loss: 0.0095 - val_accuracy: 0.4669 - lr: 0.0010 - 22s/epoch - 78ms/step\n",
+            "Epoch 29/100\n",
+            "\n",
+            "Epoch 00029: ReduceLROnPlateau reducing learning rate to 0.00020000000949949026.\n",
+            "279/279 - 22s - loss: 7.4670e-04 - accuracy: 0.4736 - val_loss: 0.0100 - val_accuracy: 0.4666 - lr: 0.0010 - 22s/epoch - 79ms/step\n",
+            "Epoch 30/100\n",
+            "279/279 - 22s - loss: 4.3038e-04 - accuracy: 0.4736 - val_loss: 0.0094 - val_accuracy: 0.4666 - lr: 2.0000e-04 - 22s/epoch - 79ms/step\n",
+            "Epoch 31/100\n",
+            "279/279 - 22s - loss: 3.0234e-04 - accuracy: 0.4736 - val_loss: 0.0093 - val_accuracy: 0.4669 - lr: 2.0000e-04 - 22s/epoch - 78ms/step\n",
+            "Epoch 32/100\n",
+            "279/279 - 22s - loss: 2.6756e-04 - accuracy: 0.4736 - val_loss: 0.0092 - val_accuracy: 0.4666 - lr: 2.0000e-04 - 22s/epoch - 78ms/step\n",
+            "Epoch 33/100\n",
+            "279/279 - 22s - loss: 2.6385e-04 - accuracy: 0.4736 - val_loss: 0.0093 - val_accuracy: 0.4666 - lr: 2.0000e-04 - 22s/epoch - 79ms/step\n",
+            "Epoch 34/100\n",
+            "279/279 - 22s - loss: 2.4069e-04 - accuracy: 0.4736 - val_loss: 0.0092 - val_accuracy: 0.4666 - lr: 2.0000e-04 - 22s/epoch - 79ms/step\n",
+            "Epoch 35/100\n",
+            "279/279 - 22s - loss: 2.3671e-04 - accuracy: 0.4736 - val_loss: 0.0092 - val_accuracy: 0.4666 - lr: 2.0000e-04 - 22s/epoch - 79ms/step\n",
+            "Epoch 36/100\n",
+            "279/279 - 22s - loss: 2.3294e-04 - accuracy: 0.4736 - val_loss: 0.0091 - val_accuracy: 0.4669 - lr: 2.0000e-04 - 22s/epoch - 79ms/step\n",
+            "Epoch 37/100\n",
+            "279/279 - 22s - loss: 2.3159e-04 - accuracy: 0.4736 - val_loss: 0.0093 - val_accuracy: 0.4666 - lr: 2.0000e-04 - 22s/epoch - 79ms/step\n",
+            "Epoch 38/100\n",
+            "279/279 - 22s - loss: 2.3266e-04 - accuracy: 0.4736 - val_loss: 0.0092 - val_accuracy: 0.4666 - lr: 2.0000e-04 - 22s/epoch - 79ms/step\n",
+            "Epoch 39/100\n",
+            "279/279 - 22s - loss: 2.3713e-04 - accuracy: 0.4736 - val_loss: 0.0092 - val_accuracy: 0.4669 - lr: 2.0000e-04 - 22s/epoch - 79ms/step\n",
+            "Epoch 40/100\n",
+            "279/279 - 22s - loss: 2.3293e-04 - accuracy: 0.4736 - val_loss: 0.0092 - val_accuracy: 0.4666 - lr: 2.0000e-04 - 22s/epoch - 78ms/step\n",
+            "Epoch 41/100\n",
+            "\n",
+            "Epoch 00041: ReduceLROnPlateau reducing learning rate to 4.0000001899898055e-05.\n",
+            "279/279 - 22s - loss: 2.3247e-04 - accuracy: 0.4736 - val_loss: 0.0091 - val_accuracy: 0.4669 - lr: 2.0000e-04 - 22s/epoch - 78ms/step\n",
+            "Epoch 42/100\n",
+            "279/279 - 22s - loss: 2.1443e-04 - accuracy: 0.4736 - val_loss: 0.0092 - val_accuracy: 0.4669 - lr: 4.0000e-05 - 22s/epoch - 78ms/step\n",
+            "Epoch 43/100\n",
+            "279/279 - 22s - loss: 1.9681e-04 - accuracy: 0.4736 - val_loss: 0.0091 - val_accuracy: 0.4669 - lr: 4.0000e-05 - 22s/epoch - 78ms/step\n",
+            "Epoch 44/100\n",
+            "279/279 - 22s - loss: 1.9097e-04 - accuracy: 0.4736 - val_loss: 0.0091 - val_accuracy: 0.4669 - lr: 4.0000e-05 - 22s/epoch - 78ms/step\n",
+            "Epoch 45/100\n",
+            "279/279 - 22s - loss: 1.8802e-04 - accuracy: 0.4736 - val_loss: 0.0091 - val_accuracy: 0.4669 - lr: 4.0000e-05 - 22s/epoch - 79ms/step\n",
+            "Epoch 46/100\n",
+            "\n",
+            "Epoch 00046: ReduceLROnPlateau reducing learning rate to 1e-05.\n",
+            "279/279 - 22s - loss: 1.8106e-04 - accuracy: 0.4736 - val_loss: 0.0092 - val_accuracy: 0.4669 - lr: 4.0000e-05 - 22s/epoch - 79ms/step\n"
+          ]
+        },
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": [
+              "<keras.callbacks.History at 0x7f0c2535ea10>"
+            ]
+          },
+          "metadata": {},
+          "execution_count": 84
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "XNG6vN48uuBm"
+      },
+      "source": [
+        "pred = model.predict(X_test_pad)"
+      ],
+      "execution_count": 85,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "wy2C5lveuuBm",
+        "outputId": "15591caf-291a-4a19-d395-02bb9a92e522"
+      },
+      "source": [
+        "pred"
+      ],
+      "execution_count": 86,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": [
+              "array([[ 0.49301174],\n",
+              "       [ 0.49301174],\n",
+              "       [ 0.47084165],\n",
+              "       ...,\n",
+              "       [-0.00269047],\n",
+              "       [-0.00269047],\n",
+              "       [-0.00269047]], dtype=float32)"
+            ]
+          },
+          "metadata": {},
+          "execution_count": 86
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "cKkIXcdtuuBn",
+        "outputId": "70bdbdec-aa98-4068-c395-ffee1895407d"
+      },
+      "source": [
+        "from sklearn.metrics import mean_squared_error\n",
+        "mean_squared_error(y_test, pred)"
+      ],
+      "execution_count": 87,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": [
+              "0.010722351682833123"
+            ]
+          },
+          "metadata": {},
+          "execution_count": 87
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "_zXvRASFuuBn"
+      },
+      "source": [
+        "final = test['feature']"
+      ],
+      "execution_count": 88,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "BxFzm7NLuuBn",
+        "outputId": "d4f95be7-6e6f-409e-c2c9-d00acaed99ae"
+      },
+      "source": [
+        "pred.flatten()"
+      ],
+      "execution_count": 89,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": [
+              "array([ 0.49301174,  0.49301174,  0.47084165, ..., -0.00269047,\n",
+              "       -0.00269047, -0.00269047], dtype=float32)"
+            ]
+          },
+          "metadata": {},
+          "execution_count": 89
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "DcmedxfeuuBo",
+        "outputId": "c7d6cbf0-dda2-4ad3-bb09-b059622eafe8"
+      },
+      "source": [
+        "final.to_numpy()"
+      ],
+      "execution_count": 90,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": [
+              "array(['burger', 'while', 'burgers', ..., 'couple', 'dozen', 'oysters'],\n",
+              "      dtype=object)"
+            ]
+          },
+          "metadata": {},
+          "execution_count": 90
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "Nuj15l3NuuBo"
+      },
+      "source": [
+        "pred = pd.DataFrame(pred)\n",
+        "final = pd.DataFrame(final)"
+      ],
+      "execution_count": 91,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "AOEx0jcbuuBo"
+      },
+      "source": [
+        "result4 = final"
+      ],
+      "execution_count": 92,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "ib2oIRqWuuBq"
+      },
+      "source": [
+        "result4.index = pred.index"
+      ],
+      "execution_count": 93,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "LTF1hSB3uuBq"
+      },
+      "source": [
+        "result4['pred'] = pred"
+      ],
+      "execution_count": 94,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 424
+        },
+        "id": "hGsGPHHIuuBq",
+        "outputId": "b0c1b002-6a1e-40f8-afd0-191f129f6473"
+      },
+      "source": [
+        "result4"
+      ],
+      "execution_count": 95,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/html": [
+              "<div>\n",
+              "<style scoped>\n",
+              "    .dataframe tbody tr th:only-of-type {\n",
+              "        vertical-align: middle;\n",
+              "    }\n",
+              "\n",
+              "    .dataframe tbody tr th {\n",
+              "        vertical-align: top;\n",
+              "    }\n",
+              "\n",
+              "    .dataframe thead th {\n",
+              "        text-align: right;\n",
+              "    }\n",
+              "</style>\n",
+              "<table border=\"1\" class=\"dataframe\">\n",
+              "  <thead>\n",
+              "    <tr style=\"text-align: right;\">\n",
+              "      <th></th>\n",
+              "      <th>feature</th>\n",
+              "      <th>pred</th>\n",
+              "    </tr>\n",
+              "  </thead>\n",
+              "  <tbody>\n",
+              "    <tr>\n",
+              "      <th>0</th>\n",
+              "      <td>burger</td>\n",
+              "      <td>0.493012</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>1</th>\n",
+              "      <td>while</td>\n",
+              "      <td>0.493012</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>2</th>\n",
+              "      <td>burgers</td>\n",
+              "      <td>0.470842</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>3</th>\n",
+              "      <td>prices</td>\n",
+              "      <td>0.470842</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>4</th>\n",
+              "      <td>Onion</td>\n",
+              "      <td>0.945860</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>...</th>\n",
+              "      <td>...</td>\n",
+              "      <td>...</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>2973</th>\n",
+              "      <td>service</td>\n",
+              "      <td>0.985742</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>2974</th>\n",
+              "      <td>porterhouse</td>\n",
+              "      <td>-0.003645</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>2975</th>\n",
+              "      <td>couple</td>\n",
+              "      <td>-0.002690</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>2976</th>\n",
+              "      <td>dozen</td>\n",
+              "      <td>-0.002690</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>2977</th>\n",
+              "      <td>oysters</td>\n",
+              "      <td>-0.002690</td>\n",
+              "    </tr>\n",
+              "  </tbody>\n",
+              "</table>\n",
+              "<p>2978 rows × 2 columns</p>\n",
+              "</div>"
+            ],
+            "text/plain": [
+              "          feature      pred\n",
+              "0          burger  0.493012\n",
+              "1           while  0.493012\n",
+              "2         burgers  0.470842\n",
+              "3          prices  0.470842\n",
+              "4           Onion  0.945860\n",
+              "...           ...       ...\n",
+              "2973      service  0.985742\n",
+              "2974  porterhouse -0.003645\n",
+              "2975       couple -0.002690\n",
+              "2976        dozen -0.002690\n",
+              "2977      oysters -0.002690\n",
+              "\n",
+              "[2978 rows x 2 columns]"
+            ]
+          },
+          "metadata": {},
+          "execution_count": 95
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 424
+        },
+        "id": "Xn2LkWDjuuBq",
+        "outputId": "5e40d6fc-d744-4449-fc91-80d9abd54df7"
+      },
+      "source": [
+        "y_test"
+      ],
+      "execution_count": 96,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/html": [
+              "<div>\n",
+              "<style scoped>\n",
+              "    .dataframe tbody tr th:only-of-type {\n",
+              "        vertical-align: middle;\n",
+              "    }\n",
+              "\n",
+              "    .dataframe tbody tr th {\n",
+              "        vertical-align: top;\n",
+              "    }\n",
+              "\n",
+              "    .dataframe thead th {\n",
+              "        text-align: right;\n",
+              "    }\n",
+              "</style>\n",
+              "<table border=\"1\" class=\"dataframe\">\n",
+              "  <thead>\n",
+              "    <tr style=\"text-align: right;\">\n",
+              "      <th></th>\n",
+              "      <th>clause_polarity</th>\n",
+              "    </tr>\n",
+              "  </thead>\n",
+              "  <tbody>\n",
+              "    <tr>\n",
+              "      <th>0</th>\n",
+              "      <td>0.5</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>0</th>\n",
+              "      <td>0.5</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>0</th>\n",
+              "      <td>0.5</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>0</th>\n",
+              "      <td>0.5</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>0</th>\n",
+              "      <td>1.0</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>...</th>\n",
+              "      <td>...</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>0</th>\n",
+              "      <td>1.0</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>0</th>\n",
+              "      <td>0.0</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>0</th>\n",
+              "      <td>0.0</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>0</th>\n",
+              "      <td>0.0</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>0</th>\n",
+              "      <td>0.0</td>\n",
+              "    </tr>\n",
+              "  </tbody>\n",
+              "</table>\n",
+              "<p>2978 rows × 1 columns</p>\n",
+              "</div>"
+            ],
+            "text/plain": [
+              "    clause_polarity\n",
+              "0               0.5\n",
+              "0               0.5\n",
+              "0               0.5\n",
+              "0               0.5\n",
+              "0               1.0\n",
+              "..              ...\n",
+              "0               1.0\n",
+              "0               0.0\n",
+              "0               0.0\n",
+              "0               0.0\n",
+              "0               0.0\n",
+              "\n",
+              "[2978 rows x 1 columns]"
+            ]
+          },
+          "metadata": {},
+          "execution_count": 96
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 17
+        },
+        "id": "nhpRuN7auuBq",
+        "outputId": "d9af31ba-0caa-4bf5-c4ec-230c41d0678e"
+      },
+      "source": [
+        "from google.colab import files\n",
+        "result4.to_csv('preds4222.csv', index=False) \n",
+        "files.download('preds4222.csv')"
+      ],
+      "execution_count": null,
+      "outputs": [
+        {
+          "output_type": "display_data",
+          "data": {
+            "application/javascript": [
+              "\n",
+              "    async function download(id, filename, size) {\n",
+              "      if (!google.colab.kernel.accessAllowed) {\n",
+              "        return;\n",
+              "      }\n",
+              "      const div = document.createElement('div');\n",
+              "      const label = document.createElement('label');\n",
+              "      label.textContent = `Downloading \"${filename}\": `;\n",
+              "      div.appendChild(label);\n",
+              "      const progress = document.createElement('progress');\n",
+              "      progress.max = size;\n",
+              "      div.appendChild(progress);\n",
+              "      document.body.appendChild(div);\n",
+              "\n",
+              "      const buffers = [];\n",
+              "      let downloaded = 0;\n",
+              "\n",
+              "      const channel = await google.colab.kernel.comms.open(id);\n",
+              "      // Send a message to notify the kernel that we're ready.\n",
+              "      channel.send({})\n",
+              "\n",
+              "      for await (const message of channel.messages) {\n",
+              "        // Send a message to notify the kernel that we're ready.\n",
+              "        channel.send({})\n",
+              "        if (message.buffers) {\n",
+              "          for (const buffer of message.buffers) {\n",
+              "            buffers.push(buffer);\n",
+              "            downloaded += buffer.byteLength;\n",
+              "            progress.value = downloaded;\n",
+              "          }\n",
+              "        }\n",
+              "      }\n",
+              "      const blob = new Blob(buffers, {type: 'application/binary'});\n",
+              "      const a = document.createElement('a');\n",
+              "      a.href = window.URL.createObjectURL(blob);\n",
+              "      a.download = filename;\n",
+              "      div.appendChild(a);\n",
+              "      a.click();\n",
+              "      div.remove();\n",
+              "    }\n",
+              "  "
+            ],
+            "text/plain": [
+              "<IPython.core.display.Javascript object>"
+            ]
+          },
+          "metadata": {}
+        },
+        {
+          "output_type": "display_data",
+          "data": {
+            "application/javascript": [
+              "download(\"download_fad7df5b-7516-4d9a-baa0-116d69d61a16\", \"preds4222.csv\", 55102)"
+            ],
+            "text/plain": [
+              "<IPython.core.display.Javascript object>"
+            ]
+          },
+          "metadata": {}
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 17
+        },
+        "id": "dDj4TDumuuBr",
+        "outputId": "716ba26d-e344-4d22-e63e-713178322e06"
+      },
+      "source": [
+        "from google.colab import files\n",
+        "y_test.to_csv('ytest.csv', index=False) \n",
+        "files.download('ytest.csv')"
+      ],
+      "execution_count": null,
+      "outputs": [
+        {
+          "output_type": "display_data",
+          "data": {
+            "application/javascript": [
+              "\n",
+              "    async function download(id, filename, size) {\n",
+              "      if (!google.colab.kernel.accessAllowed) {\n",
+              "        return;\n",
+              "      }\n",
+              "      const div = document.createElement('div');\n",
+              "      const label = document.createElement('label');\n",
+              "      label.textContent = `Downloading \"${filename}\": `;\n",
+              "      div.appendChild(label);\n",
+              "      const progress = document.createElement('progress');\n",
+              "      progress.max = size;\n",
+              "      div.appendChild(progress);\n",
+              "      document.body.appendChild(div);\n",
+              "\n",
+              "      const buffers = [];\n",
+              "      let downloaded = 0;\n",
+              "\n",
+              "      const channel = await google.colab.kernel.comms.open(id);\n",
+              "      // Send a message to notify the kernel that we're ready.\n",
+              "      channel.send({})\n",
+              "\n",
+              "      for await (const message of channel.messages) {\n",
+              "        // Send a message to notify the kernel that we're ready.\n",
+              "        channel.send({})\n",
+              "        if (message.buffers) {\n",
+              "          for (const buffer of message.buffers) {\n",
+              "            buffers.push(buffer);\n",
+              "            downloaded += buffer.byteLength;\n",
+              "            progress.value = downloaded;\n",
+              "          }\n",
+              "        }\n",
+              "      }\n",
+              "      const blob = new Blob(buffers, {type: 'application/binary'});\n",
+              "      const a = document.createElement('a');\n",
+              "      a.href = window.URL.createObjectURL(blob);\n",
+              "      a.download = filename;\n",
+              "      div.appendChild(a);\n",
+              "      a.click();\n",
+              "      div.remove();\n",
+              "    }\n",
+              "  "
+            ],
+            "text/plain": [
+              "<IPython.core.display.Javascript object>"
+            ]
+          },
+          "metadata": {}
+        },
+        {
+          "output_type": "display_data",
+          "data": {
+            "application/javascript": [
+              "download(\"download_82d42326-ddc8-44c2-ad31-30bab7fa6347\", \"ytest.csv\", 19620)"
+            ],
+            "text/plain": [
+              "<IPython.core.display.Javascript object>"
+            ]
+          },
+          "metadata": {}
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "aB3-QD8LuuBr"
+      },
+      "source": [
+        ""
+      ],
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "ewbj-7M0uuBr"
+      },
+      "source": [
+        ""
+      ],
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "MeaaENCNuuBr"
+      },
+      "source": [
+        "pred = model.predict(X_tp_pad)"
+      ],
+      "execution_count": 97,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "jpfeTjpHuuBt",
+        "outputId": "8ff35b84-2e85-4183-bfa7-0cfeb3488de2"
+      },
+      "source": [
+        "pred"
+      ],
+      "execution_count": 98,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": [
+              "array([[-0.00453277],\n",
+              "       [-0.00453277],\n",
+              "       [-0.00480882],\n",
+              "       ...,\n",
+              "       [ 0.24750957],\n",
+              "       [ 0.24750957],\n",
+              "       [ 0.7817584 ]], dtype=float32)"
+            ]
+          },
+          "metadata": {},
+          "execution_count": 98
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "ZMSID7UYuuBt",
+        "outputId": "b77264d3-af70-41ea-ab23-d81b98d89e90"
+      },
+      "source": [
+        "from sklearn.metrics import mean_squared_error\n",
+        "mean_squared_error(y_tp, pred)"
+      ],
+      "execution_count": 99,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": [
+              "0.009499475102893474"
+            ]
+          },
+          "metadata": {},
+          "execution_count": 99
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "R_no2xPOuuBt"
+      },
+      "source": [
+        "final = to_pred['feature']"
+      ],
+      "execution_count": 100,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "i3Hi0jEZuuBt",
+        "outputId": "94188793-57b5-46d4-e35e-ddb85c28732a"
+      },
+      "source": [
+        "pred.flatten()"
+      ],
+      "execution_count": 101,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": [
+              "array([-0.00453277, -0.00453277, -0.00480882, ...,  0.24750957,\n",
+              "        0.24750957,  0.7817584 ], dtype=float32)"
+            ]
+          },
+          "metadata": {},
+          "execution_count": 101
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "sZOdaz5suuBt",
+        "outputId": "e63d798f-4d31-4b52-a721-0f58d4357668"
+      },
+      "source": [
+        "final.to_numpy()"
+      ],
+      "execution_count": 102,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": [
+              "array(['lots', 'restaurant', 'time', ..., 'tables', 'restaurant', 'menu'],\n",
+              "      dtype=object)"
+            ]
+          },
+          "metadata": {},
+          "execution_count": 102
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "bERct6--uuBu"
+      },
+      "source": [
+        "pred = pd.DataFrame(pred)\n",
+        "final = pd.DataFrame(final)"
+      ],
+      "execution_count": 103,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "L8jguoEzuuBu"
+      },
+      "source": [
+        "result_new = final"
+      ],
+      "execution_count": 104,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "kypHe8WHuuBu"
+      },
+      "source": [
+        "result_new.index = pred.index"
+      ],
+      "execution_count": 105,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "lVsB7aGHuuBu"
+      },
+      "source": [
+        "result_new['pred'] = pred"
+      ],
+      "execution_count": 106,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 424
+        },
+        "id": "9sz56Wf8uuBu",
+        "outputId": "3914eca0-c1dc-4076-84e5-5beea370c7ed"
+      },
+      "source": [
+        "result_new"
+      ],
+      "execution_count": 107,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/html": [
+              "<div>\n",
+              "<style scoped>\n",
+              "    .dataframe tbody tr th:only-of-type {\n",
+              "        vertical-align: middle;\n",
+              "    }\n",
+              "\n",
+              "    .dataframe tbody tr th {\n",
+              "        vertical-align: top;\n",
+              "    }\n",
+              "\n",
+              "    .dataframe thead th {\n",
+              "        text-align: right;\n",
+              "    }\n",
+              "</style>\n",
+              "<table border=\"1\" class=\"dataframe\">\n",
+              "  <thead>\n",
+              "    <tr style=\"text-align: right;\">\n",
+              "      <th></th>\n",
+              "      <th>feature</th>\n",
+              "      <th>pred</th>\n",
+              "    </tr>\n",
+              "  </thead>\n",
+              "  <tbody>\n",
+              "    <tr>\n",
+              "      <th>0</th>\n",
+              "      <td>lots</td>\n",
+              "      <td>-0.004533</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>1</th>\n",
+              "      <td>restaurant</td>\n",
+              "      <td>-0.004533</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>2</th>\n",
+              "      <td>time</td>\n",
+              "      <td>-0.004809</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>3</th>\n",
+              "      <td>dining</td>\n",
+              "      <td>-0.004809</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>4</th>\n",
+              "      <td>restrictions</td>\n",
+              "      <td>-0.004809</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>...</th>\n",
+              "      <td>...</td>\n",
+              "      <td>...</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>4225</th>\n",
+              "      <td>food</td>\n",
+              "      <td>0.784040</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>4226</th>\n",
+              "      <td>hospitality</td>\n",
+              "      <td>0.247510</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>4227</th>\n",
+              "      <td>tables</td>\n",
+              "      <td>0.247510</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>4228</th>\n",
+              "      <td>restaurant</td>\n",
+              "      <td>0.247510</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>4229</th>\n",
+              "      <td>menu</td>\n",
+              "      <td>0.781758</td>\n",
+              "    </tr>\n",
+              "  </tbody>\n",
+              "</table>\n",
+              "<p>4230 rows × 2 columns</p>\n",
+              "</div>"
+            ],
+            "text/plain": [
+              "           feature      pred\n",
+              "0             lots -0.004533\n",
+              "1       restaurant -0.004533\n",
+              "2             time -0.004809\n",
+              "3           dining -0.004809\n",
+              "4     restrictions -0.004809\n",
+              "...            ...       ...\n",
+              "4225          food  0.784040\n",
+              "4226   hospitality  0.247510\n",
+              "4227        tables  0.247510\n",
+              "4228    restaurant  0.247510\n",
+              "4229          menu  0.781758\n",
+              "\n",
+              "[4230 rows x 2 columns]"
+            ]
+          },
+          "metadata": {},
+          "execution_count": 107
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "Q37iN0az0Uqs"
+      },
+      "source": [
+        ""
+      ],
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "5fnikyNkuuBu",
+        "outputId": "7fbc9243-d5b5-452f-be8c-b88762cc3ecc"
+      },
+      "source": [
+        "y_tp"
+      ],
+      "execution_count": 108,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": [
+              "0    0.000000\n",
+              "0    0.000000\n",
+              "0    0.000000\n",
+              "0    0.000000\n",
+              "0    0.000000\n",
+              "       ...   \n",
+              "0    0.400000\n",
+              "0    0.333333\n",
+              "0    0.333333\n",
+              "0    0.333333\n",
+              "0    0.400000\n",
+              "Name: clause_polarity, Length: 4230, dtype: float64"
+            ]
+          },
+          "metadata": {},
+          "execution_count": 108
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 597
+        },
+        "id": "nX_e7DBF0WMO",
+        "outputId": "afcac9bf-ff55-4d98-91fa-4a9ed57db4c3"
+      },
+      "source": [
+        "to_pred"
+      ],
+      "execution_count": 112,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/html": [
+              "<div>\n",
+              "<style scoped>\n",
+              "    .dataframe tbody tr th:only-of-type {\n",
+              "        vertical-align: middle;\n",
+              "    }\n",
+              "\n",
+              "    .dataframe tbody tr th {\n",
+              "        vertical-align: top;\n",
+              "    }\n",
+              "\n",
+              "    .dataframe thead th {\n",
+              "        text-align: right;\n",
+              "    }\n",
+              "</style>\n",
+              "<table border=\"1\" class=\"dataframe\">\n",
+              "  <thead>\n",
+              "    <tr style=\"text-align: right;\">\n",
+              "      <th></th>\n",
+              "      <th>restaurant</th>\n",
+              "      <th>stars</th>\n",
+              "      <th>date</th>\n",
+              "      <th>feat_index</th>\n",
+              "      <th>index</th>\n",
+              "      <th>feature</th>\n",
+              "      <th>category</th>\n",
+              "      <th>raw_clause</th>\n",
+              "      <th>clause_vector</th>\n",
+              "      <th>clause_polarity</th>\n",
+              "    </tr>\n",
+              "  </thead>\n",
+              "  <tbody>\n",
+              "    <tr>\n",
+              "      <th>0</th>\n",
+              "      <td>Gravy_Restaurant</td>\n",
+              "      <td>5 stars</td>\n",
+              "      <td>2 days ago</td>\n",
+              "      <td>0</td>\n",
+              "      <td>There are lots of Indian restaurant at Tanjong...</td>\n",
+              "      <td>lots</td>\n",
+              "      <td>price</td>\n",
+              "      <td>There are lots of Indian restaurant at Tanjong...</td>\n",
+              "      <td>[[-0.51533, 0.83186, 0.22457, -0.73865, 0.1871...</td>\n",
+              "      <td>0.000000</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>0</th>\n",
+              "      <td>Gravy_Restaurant</td>\n",
+              "      <td>5 stars</td>\n",
+              "      <td>2 days ago</td>\n",
+              "      <td>1</td>\n",
+              "      <td>There are lots of Indian restaurant at Tanjong...</td>\n",
+              "      <td>restaurant</td>\n",
+              "      <td>ambience</td>\n",
+              "      <td>There are lots of Indian restaurant at Tanjong...</td>\n",
+              "      <td>[[-0.51533, 0.83186, 0.22457, -0.73865, 0.1871...</td>\n",
+              "      <td>0.000000</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>0</th>\n",
+              "      <td>Gravy_Restaurant</td>\n",
+              "      <td>5 stars</td>\n",
+              "      <td>2 days ago</td>\n",
+              "      <td>2</td>\n",
+              "      <td>There are lots of Indian restaurant at Tanjong...</td>\n",
+              "      <td>time</td>\n",
+              "      <td>price</td>\n",
+              "      <td>Second time dining out since the dining restri...</td>\n",
+              "      <td>[[-0.024221, -0.034855, 0.3571, -0.02155, -0.5...</td>\n",
+              "      <td>0.000000</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>0</th>\n",
+              "      <td>Gravy_Restaurant</td>\n",
+              "      <td>5 stars</td>\n",
+              "      <td>2 days ago</td>\n",
+              "      <td>3</td>\n",
+              "      <td>There are lots of Indian restaurant at Tanjong...</td>\n",
+              "      <td>dining</td>\n",
+              "      <td>ambience</td>\n",
+              "      <td>Second time dining out since the dining restri...</td>\n",
+              "      <td>[[-0.024221, -0.034855, 0.3571, -0.02155, -0.5...</td>\n",
+              "      <td>0.000000</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>0</th>\n",
+              "      <td>Gravy_Restaurant</td>\n",
+              "      <td>5 stars</td>\n",
+              "      <td>2 days ago</td>\n",
+              "      <td>4</td>\n",
+              "      <td>There are lots of Indian restaurant at Tanjong...</td>\n",
+              "      <td>restrictions</td>\n",
+              "      <td>price</td>\n",
+              "      <td>Second time dining out since the dining restri...</td>\n",
+              "      <td>[[-0.024221, -0.034855, 0.3571, -0.02155, -0.5...</td>\n",
+              "      <td>0.000000</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>...</th>\n",
+              "      <td>...</td>\n",
+              "      <td>...</td>\n",
+              "      <td>...</td>\n",
+              "      <td>...</td>\n",
+              "      <td>...</td>\n",
+              "      <td>...</td>\n",
+              "      <td>...</td>\n",
+              "      <td>...</td>\n",
+              "      <td>...</td>\n",
+              "      <td>...</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>0</th>\n",
+              "      <td>Comida_Mexicana</td>\n",
+              "      <td>1 star</td>\n",
+              "      <td>4 years ago</td>\n",
+              "      <td>0</td>\n",
+              "      <td>Great Mexican food! Great hospitality within t...</td>\n",
+              "      <td>food</td>\n",
+              "      <td>food</td>\n",
+              "      <td>Great Mexican food</td>\n",
+              "      <td>[[-0.16486, 0.91997, 0.22737, -0.49031, -0.001...</td>\n",
+              "      <td>0.400000</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>0</th>\n",
+              "      <td>Comida_Mexicana</td>\n",
+              "      <td>1 star</td>\n",
+              "      <td>4 years ago</td>\n",
+              "      <td>1</td>\n",
+              "      <td>Great Mexican food! Great hospitality within t...</td>\n",
+              "      <td>hospitality</td>\n",
+              "      <td>price</td>\n",
+              "      <td>Great hospitality within the few tables availa...</td>\n",
+              "      <td>[[0.23471, 0.097874, 0.049255, 0.42204, -0.253...</td>\n",
+              "      <td>0.333333</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>0</th>\n",
+              "      <td>Comida_Mexicana</td>\n",
+              "      <td>1 star</td>\n",
+              "      <td>4 years ago</td>\n",
+              "      <td>2</td>\n",
+              "      <td>Great Mexican food! Great hospitality within t...</td>\n",
+              "      <td>tables</td>\n",
+              "      <td>ambience</td>\n",
+              "      <td>Great hospitality within the few tables availa...</td>\n",
+              "      <td>[[0.23471, 0.097874, 0.049255, 0.42204, -0.253...</td>\n",
+              "      <td>0.333333</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>0</th>\n",
+              "      <td>Comida_Mexicana</td>\n",
+              "      <td>1 star</td>\n",
+              "      <td>4 years ago</td>\n",
+              "      <td>3</td>\n",
+              "      <td>Great Mexican food! Great hospitality within t...</td>\n",
+              "      <td>restaurant</td>\n",
+              "      <td>ambience</td>\n",
+              "      <td>Great hospitality within the few tables availa...</td>\n",
+              "      <td>[[0.23471, 0.097874, 0.049255, 0.42204, -0.253...</td>\n",
+              "      <td>0.333333</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>0</th>\n",
+              "      <td>Comida_Mexicana</td>\n",
+              "      <td>2 stars</td>\n",
+              "      <td>4 years ago</td>\n",
+              "      <td>0</td>\n",
+              "      <td>Great Mexican menu</td>\n",
+              "      <td>menu</td>\n",
+              "      <td>food</td>\n",
+              "      <td>Great Mexican menu</td>\n",
+              "      <td>[[-0.65068, 0.20939, 0.36707, 0.01845, 0.36554...</td>\n",
+              "      <td>0.400000</td>\n",
+              "    </tr>\n",
+              "  </tbody>\n",
+              "</table>\n",
+              "<p>4230 rows × 10 columns</p>\n",
+              "</div>"
+            ],
+            "text/plain": [
+              "          restaurant  ... clause_polarity\n",
+              "0   Gravy_Restaurant  ...        0.000000\n",
+              "0   Gravy_Restaurant  ...        0.000000\n",
+              "0   Gravy_Restaurant  ...        0.000000\n",
+              "0   Gravy_Restaurant  ...        0.000000\n",
+              "0   Gravy_Restaurant  ...        0.000000\n",
+              "..               ...  ...             ...\n",
+              "0    Comida_Mexicana  ...        0.400000\n",
+              "0    Comida_Mexicana  ...        0.333333\n",
+              "0    Comida_Mexicana  ...        0.333333\n",
+              "0    Comida_Mexicana  ...        0.333333\n",
+              "0    Comida_Mexicana  ...        0.400000\n",
+              "\n",
+              "[4230 rows x 10 columns]"
+            ]
+          },
+          "metadata": {},
+          "execution_count": 112
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "MzCJx4ns0aTi"
+      },
+      "source": [
+        "place = to_pred['restaurant']\n",
+        "category = to_pred['category']"
+      ],
+      "execution_count": 119,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "eI4Z12860qz2"
+      },
+      "source": [
+        "place = pd.DataFrame(place)"
+      ],
+      "execution_count": 121,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "7muRg-G609Gj"
+      },
+      "source": [
+        "place.index = pred.index"
+      ],
+      "execution_count": 122,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "n-rPbRye0mvl"
+      },
+      "source": [
+        "result_new['place'] = place"
+      ],
+      "execution_count": 123,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "JUYUE15d1Dey"
+      },
+      "source": [
+        "category = pd.DataFrame(category)\n",
+        "category.index = pred.index\n",
+        "result_new['category'] = category"
+      ],
+      "execution_count": 126,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 424
+        },
+        "id": "pGxXr5L_1Dh2",
+        "outputId": "03d8846a-b166-48c5-cbf2-f317d370faf6"
+      },
+      "source": [
+        "result_new"
+      ],
+      "execution_count": 127,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/html": [
+              "<div>\n",
+              "<style scoped>\n",
+              "    .dataframe tbody tr th:only-of-type {\n",
+              "        vertical-align: middle;\n",
+              "    }\n",
+              "\n",
+              "    .dataframe tbody tr th {\n",
+              "        vertical-align: top;\n",
+              "    }\n",
+              "\n",
+              "    .dataframe thead th {\n",
+              "        text-align: right;\n",
+              "    }\n",
+              "</style>\n",
+              "<table border=\"1\" class=\"dataframe\">\n",
+              "  <thead>\n",
+              "    <tr style=\"text-align: right;\">\n",
+              "      <th></th>\n",
+              "      <th>feature</th>\n",
+              "      <th>pred</th>\n",
+              "      <th>place</th>\n",
+              "      <th>category</th>\n",
+              "    </tr>\n",
+              "  </thead>\n",
+              "  <tbody>\n",
+              "    <tr>\n",
+              "      <th>0</th>\n",
+              "      <td>lots</td>\n",
+              "      <td>-0.004533</td>\n",
+              "      <td>Gravy_Restaurant</td>\n",
+              "      <td>price</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>1</th>\n",
+              "      <td>restaurant</td>\n",
+              "      <td>-0.004533</td>\n",
+              "      <td>Gravy_Restaurant</td>\n",
+              "      <td>ambience</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>2</th>\n",
+              "      <td>time</td>\n",
+              "      <td>-0.004809</td>\n",
+              "      <td>Gravy_Restaurant</td>\n",
+              "      <td>price</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>3</th>\n",
+              "      <td>dining</td>\n",
+              "      <td>-0.004809</td>\n",
+              "      <td>Gravy_Restaurant</td>\n",
+              "      <td>ambience</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>4</th>\n",
+              "      <td>restrictions</td>\n",
+              "      <td>-0.004809</td>\n",
+              "      <td>Gravy_Restaurant</td>\n",
+              "      <td>price</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>...</th>\n",
+              "      <td>...</td>\n",
+              "      <td>...</td>\n",
+              "      <td>...</td>\n",
+              "      <td>...</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>4225</th>\n",
+              "      <td>food</td>\n",
+              "      <td>0.784040</td>\n",
+              "      <td>Comida_Mexicana</td>\n",
+              "      <td>food</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>4226</th>\n",
+              "      <td>hospitality</td>\n",
+              "      <td>0.247510</td>\n",
+              "      <td>Comida_Mexicana</td>\n",
+              "      <td>price</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>4227</th>\n",
+              "      <td>tables</td>\n",
+              "      <td>0.247510</td>\n",
+              "      <td>Comida_Mexicana</td>\n",
+              "      <td>ambience</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>4228</th>\n",
+              "      <td>restaurant</td>\n",
+              "      <td>0.247510</td>\n",
+              "      <td>Comida_Mexicana</td>\n",
+              "      <td>ambience</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>4229</th>\n",
+              "      <td>menu</td>\n",
+              "      <td>0.781758</td>\n",
+              "      <td>Comida_Mexicana</td>\n",
+              "      <td>food</td>\n",
+              "    </tr>\n",
+              "  </tbody>\n",
+              "</table>\n",
+              "<p>4230 rows × 4 columns</p>\n",
+              "</div>"
+            ],
+            "text/plain": [
+              "           feature      pred             place  category\n",
+              "0             lots -0.004533  Gravy_Restaurant     price\n",
+              "1       restaurant -0.004533  Gravy_Restaurant  ambience\n",
+              "2             time -0.004809  Gravy_Restaurant     price\n",
+              "3           dining -0.004809  Gravy_Restaurant  ambience\n",
+              "4     restrictions -0.004809  Gravy_Restaurant     price\n",
+              "...            ...       ...               ...       ...\n",
+              "4225          food  0.784040   Comida_Mexicana      food\n",
+              "4226   hospitality  0.247510   Comida_Mexicana     price\n",
+              "4227        tables  0.247510   Comida_Mexicana  ambience\n",
+              "4228    restaurant  0.247510   Comida_Mexicana  ambience\n",
+              "4229          menu  0.781758   Comida_Mexicana      food\n",
+              "\n",
+              "[4230 rows x 4 columns]"
+            ]
+          },
+          "metadata": {},
+          "execution_count": 127
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "TCtuj0S71Dkp"
+      },
+      "source": [
+        ""
+      ],
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 17
+        },
+        "id": "KmCU9xeeuuBu",
+        "outputId": "c1c495c7-0c8f-4644-c4eb-55bac505f4d6"
+      },
+      "source": [
+        "from google.colab import files\n",
+        "result_new.to_csv('preds4222_newtest2.csv', index=False) \n",
+        "files.download('preds4222_newtest2.csv')"
+      ],
+      "execution_count": 128,
+      "outputs": [
+        {
+          "output_type": "display_data",
+          "data": {
+            "application/javascript": [
+              "\n",
+              "    async function download(id, filename, size) {\n",
+              "      if (!google.colab.kernel.accessAllowed) {\n",
+              "        return;\n",
+              "      }\n",
+              "      const div = document.createElement('div');\n",
+              "      const label = document.createElement('label');\n",
+              "      label.textContent = `Downloading \"${filename}\": `;\n",
+              "      div.appendChild(label);\n",
+              "      const progress = document.createElement('progress');\n",
+              "      progress.max = size;\n",
+              "      div.appendChild(progress);\n",
+              "      document.body.appendChild(div);\n",
+              "\n",
+              "      const buffers = [];\n",
+              "      let downloaded = 0;\n",
+              "\n",
+              "      const channel = await google.colab.kernel.comms.open(id);\n",
+              "      // Send a message to notify the kernel that we're ready.\n",
+              "      channel.send({})\n",
+              "\n",
+              "      for await (const message of channel.messages) {\n",
+              "        // Send a message to notify the kernel that we're ready.\n",
+              "        channel.send({})\n",
+              "        if (message.buffers) {\n",
+              "          for (const buffer of message.buffers) {\n",
+              "            buffers.push(buffer);\n",
+              "            downloaded += buffer.byteLength;\n",
+              "            progress.value = downloaded;\n",
+              "          }\n",
+              "        }\n",
+              "      }\n",
+              "      const blob = new Blob(buffers, {type: 'application/binary'});\n",
+              "      const a = document.createElement('a');\n",
+              "      a.href = window.URL.createObjectURL(blob);\n",
+              "      a.download = filename;\n",
+              "      div.appendChild(a);\n",
+              "      a.click();\n",
+              "      div.remove();\n",
+              "    }\n",
+              "  "
+            ],
+            "text/plain": [
+              "<IPython.core.display.Javascript object>"
+            ]
+          },
+          "metadata": {}
+        },
+        {
+          "output_type": "display_data",
+          "data": {
+            "application/javascript": [
+              "download(\"download_d6bed1ac-9a12-4d33-a8f0-f53381a8d53c\", \"preds4222_newtest2.csv\", 161265)"
+            ],
+            "text/plain": [
+              "<IPython.core.display.Javascript object>"
+            ]
+          },
+          "metadata": {}
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 17
+        },
+        "id": "VuXAVndeuuBu",
+        "outputId": "3218fd02-7631-41f4-f5a9-a654b33fb32a"
+      },
+      "source": [
+        "from google.colab import files\n",
+        "y_tp.to_csv('ynew.csv', index=False) \n",
+        "files.download('ynew.csv')"
+      ],
+      "execution_count": null,
+      "outputs": [
+        {
+          "output_type": "display_data",
+          "data": {
+            "application/javascript": [
+              "\n",
+              "    async function download(id, filename, size) {\n",
+              "      if (!google.colab.kernel.accessAllowed) {\n",
+              "        return;\n",
+              "      }\n",
+              "      const div = document.createElement('div');\n",
+              "      const label = document.createElement('label');\n",
+              "      label.textContent = `Downloading \"${filename}\": `;\n",
+              "      div.appendChild(label);\n",
+              "      const progress = document.createElement('progress');\n",
+              "      progress.max = size;\n",
+              "      div.appendChild(progress);\n",
+              "      document.body.appendChild(div);\n",
+              "\n",
+              "      const buffers = [];\n",
+              "      let downloaded = 0;\n",
+              "\n",
+              "      const channel = await google.colab.kernel.comms.open(id);\n",
+              "      // Send a message to notify the kernel that we're ready.\n",
+              "      channel.send({})\n",
+              "\n",
+              "      for await (const message of channel.messages) {\n",
+              "        // Send a message to notify the kernel that we're ready.\n",
+              "        channel.send({})\n",
+              "        if (message.buffers) {\n",
+              "          for (const buffer of message.buffers) {\n",
+              "            buffers.push(buffer);\n",
+              "            downloaded += buffer.byteLength;\n",
+              "            progress.value = downloaded;\n",
+              "          }\n",
+              "        }\n",
+              "      }\n",
+              "      const blob = new Blob(buffers, {type: 'application/binary'});\n",
+              "      const a = document.createElement('a');\n",
+              "      a.href = window.URL.createObjectURL(blob);\n",
+              "      a.download = filename;\n",
+              "      div.appendChild(a);\n",
+              "      a.click();\n",
+              "      div.remove();\n",
+              "    }\n",
+              "  "
+            ],
+            "text/plain": [
+              "<IPython.core.display.Javascript object>"
+            ]
+          },
+          "metadata": {}
+        },
+        {
+          "output_type": "display_data",
+          "data": {
+            "application/javascript": [
+              "download(\"download_58085edf-8218-484c-93ac-d528b96f0574\", \"ynew.csv\", 27963)"
+            ],
+            "text/plain": [
+              "<IPython.core.display.Javascript object>"
+            ]
+          },
+          "metadata": {}
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "ARh8jtZkq63b"
+      },
+      "source": [
+        ""
+      ],
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "kBlWj3D3q652"
+      },
+      "source": [
+        ""
+      ],
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "Ii7x6Oqaq68K"
+      },
+      "source": [
+        ""
+      ],
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "wiME8g8_q6-u"
+      },
+      "source": [
+        ""
+      ],
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "VXOaRSAWq7Ar"
+      },
+      "source": [
+        ""
+      ],
+      "execution_count": null,
+      "outputs": []
+    }
+  ]
+}
