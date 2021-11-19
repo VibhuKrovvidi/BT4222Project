@@ -4,7 +4,11 @@
 
 | Dataset  | Description |
 | ------------- | ------------- |
-| reg_scraped_output.csv | Scraped reviews which include 1) review 2) date 3) stars 4) restaurant |
+| reg_scraped_output.csv | Scraped reviews which includes 1) review 2) date 3) stars 4) restaurant |
+| sent_datasets > total_sentiment_data.pkl | Processed Full Dataset used for model training|
+| sent_datasets > sent_train.pkl | Processed Training Dataset used for model training |
+| sent_datasets > sent_validate.pkl | Processed Validation Dataset used for model training |
+| sent_datasets > sent_test.pkl | Processed Test Dataset used for model training |
 | Clause Polarity Predictions (CNN).csv | Predictions of Clause Polarity using CNN |
 |predicteddata_forEDA.csv| CNN predictions of 5 randomly chosen restaurants for EDA |
 
