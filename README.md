@@ -3,6 +3,7 @@
 ## Datasets
 
 | Dataset  | Description |
+| ------------- | ------------- |
 | reg_scraped_output.csv | Scraped reviews which include 1) review 2) date 3) stars 4) restaurant |
 | Clause Polarity Predictions (CNN).csv | Predictions of Clause Polarity using CNN |
 |predicteddata_forEDA.csv| CNN predictions of 5 randomly chosen restaurants for EDA |
